@@ -10,4 +10,15 @@ entries:
     urls:
     - https://github.com/mecmus/helm-charts/releases/download/adguard-home-0.1.0/adguard-home-0.1.0.tgz
     version: 0.1.0
-generated: "2024-10-25T18:58:02.150298181Z"
+  filesender:
+  - apiVersion: v2
+    appVersion: "3.3"
+    created: "2026-01-15T14:43:57.637882326Z"
+    description: A Helm chart for Kubernetes
+    digest: 02131bf2d5ff3146a978b98e551cb0c64c9e8bacf9eb5c52582537dff68b4a28
+    name: filesender
+    type: application
+    urls:
+    - https://github.com/mecmus/helm-charts/releases/download/filesender-3.3.0/filesender-3.3.0.tgz
+    version: 3.3.0
+generated: "2026-01-15T14:43:57.637893307Z"
