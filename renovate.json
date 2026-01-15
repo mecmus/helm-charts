@@ -1,0 +1,45 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:base"
+  ],
+  "hostRules": [
+    {
+      "matchHost": "dhi.io",
+      "hostType": "docker",
+      "username": "daxxi13",
+      "password": "{{ secrets.DHI_PASSWORD }}"
+    }
+  ],
+  "packageRules": [
+    {
+      "matchPackageNames": ["dhi.io/php"],
+      "groupName": "DHI PHP PHP-FPM updates"
+    },
+    {
+      "matchDatasources": ["github-releases"],
+      "matchPackageNames": ["filesender/filesender"],
+      "extractVersion": "^v?(?<version>.*)$"
+    }
+  ],
+  "customManagers": [
+    {
+      "customType": "dockerfile",
+      "fileMatch": ["(^|/)Dockerfile$"],
+      "matchStrings": [
+        "FROM dhi.io/php:(?<currentValue>.*?)-fpm"
+      ],
+      "depNameTemplate": "dhi.io/php",
+      "datasourceTemplate": "docker"
+    },
+    {
+      "customType": "regex",
+      "fileMatch": ["(^|/)Dockerfile$"],
+      "matchStrings": [
+        "ARG FILESENDER_VERSION=(?<currentValue>.*)"
+      ],
+      "depNameTemplate": "filesender/filesender",
+      "datasourceTemplate": "github-releases"
+    }
+  ]
+}
