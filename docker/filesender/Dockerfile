@@ -40,7 +40,7 @@ RUN cd $PHP_SRC_DIR/ext/pdo_mysql && phpize && ./configure && make -j$(nproc) &&
 RUN mkdir -p /build/php-extensions \
     && cp $(php-config --extension-dir)/*.so /build/php-extensions/ \
     && mkdir -p /build/php-conf \
-    && for ext in pdo_mysql pdo_pgsql gd intl mbstring zip soap bcmath exif; do \
+    && for ext in pdo_mysql pdo_pgsql gd zip soap bcmath exif; do \
        echo "extension=/usr/local/lib/php/extensions/${ext}.so" > /build/php-conf/${ext}.ini; \
     done
 
