@@ -1,33 +1,49 @@
-# Image FileSender basée sur Docker Hardened Images (DHI)
-# Utilisation de la version la plus récente de PHP-FPM disponible sur dhi.io
-FROM dhi.io/php:8.5.0-fpm
+# Stage 1: Builder - Préparation des fichiers de FileSender et SimpleSAMLphp
+FROM php:8.3-fpm-bookworm AS builder
 
-# Passage en root pour l'installation des dépendances système
-USER root
-
-# Installation des paquets nécessaires pour FileSender (PostgreSQL, MySQL, GD, Zip)
+# Installation des dépendances pour extraire les sources
 RUN apt-get update && apt-get install -y \
-    postgresql-client \
-    libpq-dev \
-    libpng-dev \
-    libzip-dev \
-    zip \
-    unzip \
     curl \
-    && docker-php-ext-install pdo pdo_pgsql pdo_mysql gd zip \
+    tar \
+    git \
+    unzip \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Définition de la version de FileSender
+# Versions
+ARG FILESENDER_VERSION=3.3
+ARG SIMPLESAMLPHP_VERSION=2.2.3
+
+WORKDIR /build
+
+# Téléchargement et extraction de FileSender (Branche master3 pour v3.3)
+RUN git clone --depth 1 --branch master3 https://github.com/filesender/filesender.git filesender
+
+# Téléchargement et extraction de SimpleSAMLphp
+RUN curl -L https://github.com/simplesamlphp/simplesamlphp/releases/download/v${SIMPLESAMLPHP_VERSION}/simplesamlphp-${SIMPLESAMLPHP_VERSION}-full.tar.gz | tar xz \
+    && mv simplesamlphp-${SIMPLESAMLPHP_VERSION} simplesaml
+
+# Stage 2: Runtime - Image sécurisée Docker Hardened
+FROM dhi.io/php:8.5.0-fpm
+
+# Information sur la version
 ARG FILESENDER_VERSION=3.3
 
-# Installation de FileSender
+# Création des répertoires nécessaires
+# Les images DHI tournent souvent avec l'UID 1000
 WORKDIR /var/www/html
-RUN curl -L https://github.com/filesender/filesender/archive/refs/tags/v${FILESENDER_VERSION}.tar.gz | tar xz --strip-components=1 \
-    && chown -R www-data:www-data /var/www/html
 
-# Conforme aux images DHI, on repasse sur l'utilisateur www-data
-USER www-data
+# Copie des fichiers depuis le builder
+COPY --from=builder --chown=1000:1000 /build/filesender /var/www/html
+COPY --from=builder --chown=1000:1000 /build/simplesaml /var/www/simplesaml
 
+# Création des dossiers de stockage et logs avec les bons droits
+RUN mkdir -p /var/www/html/files /var/www/html/tmp /var/www/html/log \
+    && chown -R 1000:1000 /var/www/html/files /var/www/html/tmp /var/www/html/log
+
+# Metadata
 LABEL org.opencontainers.image.source="https://github.com/mecmus/helm-charts"
-LABEL org.opencontainers.image.description="FileSender v${FILESENDER_VERSION} based on DHI PHP 8.5.0-fpm"
+LABEL org.opencontainers.image.description="FileSender v${FILESENDER_VERSION} (branch 3.3) with SimpleSAMLphp based on DHI PHP"
 LABEL org.opencontainers.image.version="${FILESENDER_VERSION}"
+
+# L'utilisateur par défaut de DHI est conservé (non-root)
+USER 1000

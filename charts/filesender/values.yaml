@@ -56,6 +56,19 @@ service:
   # This sets the ports more information can be found here: https://kubernetes.io/docs/concepts/services-networking/service/#field-spec-ports
   port: 80
 
+# Persistence pour le stockage des fichiers
+persistence:
+  enabled: true
+  size: 10Gi
+  accessModes:
+    - ReadWriteOnce
+  storageClass: ""
+
+# Tâches périodiques (Nettoyage des fichiers)
+cronjob:
+  enabled: true
+  schedule: "0 1 * * *" # Tous les jours à 1h du matin
+
 config:
   # FileSender configuration
   site_url: "http://filesender.example.com"

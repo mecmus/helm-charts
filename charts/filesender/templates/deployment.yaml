@@ -61,6 +61,12 @@ spec:
               mountPath: /var/www/html/config/config.php
               subPath: config.php
               readOnly: true
+            - name: storage
+              mountPath: /var/www/html/files
+            - name: tmp
+              mountPath: /var/www/html/tmp
+            - name: log
+              mountPath: /var/www/html/log
           {{- with .Values.volumeMounts }}
             {{- toYaml . | nindent 12 }}
           {{- end }}
@@ -68,6 +74,17 @@ spec:
         - name: config
           configMap:
             name: {{ include "filesender.fullname" . }}-config
+        - name: storage
+          {{- if .Values.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ include "filesender.fullname" . }}-storage
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+        - name: tmp
+          emptyDir: {}
+        - name: log
+          emptyDir: {}
       {{- with .Values.volumes }}
         {{- toYaml . | nindent 8 }}
       {{- end }}
