@@ -18,6 +18,9 @@ RUN apt-get update && apt-get install -y \
     libonig-dev \
     libxml2-dev \
     libpcre2-dev \
+    libpng-dev \
+    libpq5 \
+    libzip4 \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Compilation des extensions PHP nécessaires
@@ -60,6 +63,21 @@ RUN mkdir -p filesender/files filesender/tmp filesender/log \
 
 # Stage 2: Runtime - Image sécurisée Docker Hardened
 FROM dhi.io/php:8.5.0-fpm
+
+# Installation des dépendances runtime nécessaires pour les extensions PHP compilées
+# Note: On utilise apt-get car le stage runtime de DHI est basé sur Debian/Ubuntu
+# mais on doit vérifier si apt est disponible. Si DHI est vraiment hardened (sans package manager),
+# il faudra copier les .so des librairies système (moins recommandé).
+USER root
+RUN apt-get update && apt-get install -y \
+    libpng16-16 \
+    libjpeg62-turbo \
+    libfreetype6 \
+    libicu72 \
+    libzip4 \
+    libpq5 \
+    libonig5 \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Information sur la version
 ARG FILESENDER_VERSION=3.3
