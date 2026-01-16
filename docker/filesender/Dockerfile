@@ -1,35 +1,49 @@
-# Stage 1: Builder - Préparation des fichiers de FileSender
+# Stage 1: Builder - Préparation des fichiers de FileSender et SimpleSAMLphp
 FROM php:8.3-fpm-bookworm AS builder
 
-# Installation des dépendances pour extraire FileSender
+# Installation des dépendances pour extraire les sources
 RUN apt-get update && apt-get install -y \
     curl \
     tar \
+    git \
+    unzip \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Version de FileSender
+# Versions
 ARG FILESENDER_VERSION=3.3
+ARG SIMPLESAMLPHP_VERSION=2.2.3
 
 WORKDIR /build
 
-# Téléchargement et extraction de FileSender
-RUN curl -L https://github.com/filesender/filesender/archive/refs/tags/v${FILESENDER_VERSION}.tar.gz | tar xz --strip-components=1
+# Téléchargement et extraction de FileSender (Branche master3 pour v3.3)
+RUN git clone --depth 1 --branch master3 https://github.com/filesender/filesender.git filesender
+
+# Téléchargement et extraction de SimpleSAMLphp
+RUN curl -L https://github.com/simplesamlphp/simplesamlphp/releases/download/v${SIMPLESAMLPHP_VERSION}/simplesamlphp-${SIMPLESAMLPHP_VERSION}-full.tar.gz | tar xz \
+    && mv simplesamlphp-${SIMPLESAMLPHP_VERSION} simplesaml
 
 # Stage 2: Runtime - Image sécurisée Docker Hardened
 FROM dhi.io/php:8.5.0-fpm
 
-# Information sur la version pour le label
+# Information sur la version
 ARG FILESENDER_VERSION=3.3
 
-# Copie des fichiers depuis le builder
-# On utilise --chown=1000:1000 car les images DHI utilisent généralement l'UID 1000
-COPY --from=builder --chown=1000:1000 /build /var/www/html
-
-# L'utilisateur est déjà défini par l'image DHI (non-root)
-# On s'assure d'être dans le bon dossier
+# Création des répertoires nécessaires
+# Les images DHI tournent souvent avec l'UID 1000
 WORKDIR /var/www/html
+
+# Copie des fichiers depuis le builder
+COPY --from=builder --chown=1000:1000 /build/filesender /var/www/html
+COPY --from=builder --chown=1000:1000 /build/simplesaml /var/www/simplesaml
+
+# Création des dossiers de stockage et logs avec les bons droits
+RUN mkdir -p /var/www/html/files /var/www/html/tmp /var/www/html/log \
+    && chown -R 1000:1000 /var/www/html/files /var/www/html/tmp /var/www/html/log
 
 # Metadata
 LABEL org.opencontainers.image.source="https://github.com/mecmus/helm-charts"
-LABEL org.opencontainers.image.description="FileSender v${FILESENDER_VERSION} based on DHI PHP 8.5.0-fpm (Multi-stage build)"
+LABEL org.opencontainers.image.description="FileSender v${FILESENDER_VERSION} (branch 3.3) with SimpleSAMLphp based on DHI PHP"
 LABEL org.opencontainers.image.version="${FILESENDER_VERSION}"
+
+# L'utilisateur par défaut de DHI est conservé (non-root)
+USER 1000

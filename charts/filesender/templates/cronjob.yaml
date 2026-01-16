@@ -1,0 +1,39 @@
+{{- if .Values.cronjob.enabled -}}
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ include "filesender.fullname" . }}-cleanup
+  labels:
+    {{- include "filesender.labels" . | nindent 4 }}
+spec:
+  schedule: {{ .Values.cronjob.schedule | quote }}
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: cleanup
+            image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+            imagePullPolicy: {{ .Values.image.pullPolicy }}
+            command:
+            - php
+            - /var/www/html/scripts/taskprocessing.php
+            volumeMounts:
+            - name: storage
+              mountPath: /var/www/html/files
+            - name: config
+              mountPath: /var/www/html/config/config.php
+              subPath: config.php
+          restartPolicy: OnFailure
+          volumes:
+          - name: storage
+            {{- if .Values.persistence.enabled }}
+            persistentVolumeClaim:
+              claimName: {{ include "filesender.fullname" . }}-storage
+            {{- else }}
+            emptyDir: {}
+            {{- end }}
+          - name: config
+            configMap:
+              name: {{ include "filesender.fullname" . }}-config
+{{- end }}
