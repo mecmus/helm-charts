@@ -1,19 +1,53 @@
-# Stage 1: Builder - Préparation des fichiers de FileSender et SimpleSAMLphp
-FROM php:8.3-fpm-bookworm AS builder
+# Stage 1: Builder - Compilation des extensions et préparation des fichiers
+FROM dhi.io/php:8.5.0-dev AS builder
 
-# Installation des dépendances pour extraire les sources
+USER root
+
+# Installation des dépendances de build pour les extensions PHP requises par FileSender
 RUN apt-get update && apt-get install -y \
     curl \
     tar \
     git \
     unzip \
+    libpq-dev \
+    libpng-dev \
+    libjpeg-dev \
+    libfreetype6-dev \
+    libicu-dev \
+    libzip-dev \
+    libonig-dev \
+    libxml2-dev \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# Compilation des extensions PHP nécessaires
+# DHI fournit les sources dans $PHP_SRC_DIR
+RUN cd $PHP_SRC_DIR/ext/pdo_mysql && phpize && ./configure && make -j$(nproc) && make install \
+    && cd $PHP_SRC_DIR/ext/pdo_pgsql && phpize && ./configure && make -j$(nproc) && make install \
+    && cd $PHP_SRC_DIR/ext/gd && phpize && ./configure --with-freetype --with-jpeg && make -j$(nproc) && make install \
+    && cd $PHP_SRC_DIR/ext/intl && phpize && ./configure && make -j$(nproc) && make install \
+    && cd $PHP_SRC_DIR/ext/mbstring && phpize && ./configure && make -j$(nproc) && make install \
+    && cd $PHP_SRC_DIR/ext/zip && phpize && ./configure && make -j$(nproc) && make install \
+    && cd $PHP_SRC_DIR/ext/soap && phpize && ./configure && make -j$(nproc) && make install \
+    && cd $PHP_SRC_DIR/ext/bcmath && phpize && ./configure && make -j$(nproc) && make install \
+    && cd $PHP_SRC_DIR/ext/exif && phpize && ./configure && make -j$(nproc) && make install
+
+# Création des fichiers de configuration .ini (car le stage final n'a pas de shell)
+RUN mkdir -p /build/php-conf \
+    && echo "extension=pdo_mysql.so" > /build/php-conf/pdo_mysql.ini \
+    && echo "extension=pdo_pgsql.so" > /build/php-conf/pdo_pgsql.ini \
+    && echo "extension=gd.so" > /build/php-conf/gd.ini \
+    && echo "extension=intl.so" > /build/php-conf/intl.ini \
+    && echo "extension=mbstring.so" > /build/php-conf/mbstring.ini \
+    && echo "extension=zip.so" > /build/php-conf/zip.ini \
+    && echo "extension=soap.so" > /build/php-conf/soap.ini \
+    && echo "extension=bcmath.so" > /build/php-conf/bcmath.ini \
+    && echo "extension=exif.so" > /build/php-conf/exif.ini
 
 # Versions
 ARG FILESENDER_VERSION=3.3
 ARG SIMPLESAMLPHP_VERSION=2.2.3
 
-WORKDIR /build
+WORKDIR /build/app
 
 # Téléchargement et extraction de FileSender (Branche master3 pour v3.3)
 RUN git clone --depth 1 --branch master3 https://github.com/filesender/filesender.git filesender
@@ -22,13 +56,11 @@ RUN git clone --depth 1 --branch master3 https://github.com/filesender/filesende
 RUN curl -L https://github.com/simplesamlphp/simplesamlphp/releases/download/v${SIMPLESAMLPHP_VERSION}/simplesamlphp-${SIMPLESAMLPHP_VERSION}-full.tar.gz | tar xz \
     && mv simplesamlphp-${SIMPLESAMLPHP_VERSION} simplesaml
 
-# Création des dossiers de stockage et logs dans le builder (UID 1000 pour DHI)
+# Création des dossiers de stockage et logs (UID 1000 pour DHI)
 RUN mkdir -p filesender/files filesender/tmp filesender/log \
     && chown -R 1000:1000 filesender simplesaml
 
 # Stage 2: Runtime - Image sécurisée Docker Hardened
-# Note: Les images runtime DHI n'ont pas de shell (/bin/sh). 
-# Toutes les configurations de fichiers doivent être faites dans le stage builder.
 FROM dhi.io/php:8.5.0-fpm
 
 # Information sur la version
@@ -36,13 +68,17 @@ ARG FILESENDER_VERSION=3.3
 
 # Metadata
 LABEL org.opencontainers.image.source="https://github.com/mecmus/helm-charts"
-LABEL org.opencontainers.image.description="FileSender v${FILESENDER_VERSION} (branch 3.3) with SimpleSAMLphp based on DHI PHP"
+LABEL org.opencontainers.image.description="FileSender v${FILESENDER_VERSION} (branch 3.3) with SimpleSAMLphp based on Hardened PHP"
 LABEL org.opencontainers.image.version="${FILESENDER_VERSION}"
 
-# Copie des fichiers préparés (permissions préservées par chown dans builder)
-# DHI PHP-FPM utilise /var/www/html comme WORKDIR par défaut.
-COPY --from=builder --chown=1000:1000 /build/filesender /var/www/html
-COPY --from=builder --chown=1000:1000 /build/simplesaml /var/www/simplesaml
+# Copie des extensions compilées
+COPY --from=builder /usr/local/lib/php/extensions /usr/local/lib/php/extensions
+# Copie des configurations d'extensions préparées dans $PHP_INI_DIR/conf.d/
+COPY --from=builder /build/php-conf/ $PHP_INI_DIR/conf.d/
+
+# Copie des fichiers préparés
+COPY --from=builder --chown=1000:1000 /build/app/filesender /var/www/html
+COPY --from=builder --chown=1000:1000 /build/app/simplesaml /var/www/simplesaml
 
 # L'utilisateur par défaut de DHI est conservé (non-root)
 USER 1000
