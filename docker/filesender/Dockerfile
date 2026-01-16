@@ -32,17 +32,14 @@ RUN cd $PHP_SRC_DIR/ext/pdo_mysql && phpize && ./configure && make -j$(nproc) &&
     && cd $PHP_SRC_DIR/ext/bcmath && phpize && ./configure && make -j$(nproc) && make install \
     && cd $PHP_SRC_DIR/ext/exif && phpize && ./configure && make -j$(nproc) && make install
 
-# Création des fichiers de configuration .ini (car le stage final n'a pas de shell)
-RUN mkdir -p /build/php-conf \
-    && echo "extension=pdo_mysql.so" > /build/php-conf/pdo_mysql.ini \
-    && echo "extension=pdo_pgsql.so" > /build/php-conf/pdo_pgsql.ini \
-    && echo "extension=gd.so" > /build/php-conf/gd.ini \
-    && echo "extension=intl.so" > /build/php-conf/intl.ini \
-    && echo "extension=mbstring.so" > /build/php-conf/mbstring.ini \
-    && echo "extension=zip.so" > /build/php-conf/zip.ini \
-    && echo "extension=soap.so" > /build/php-conf/soap.ini \
-    && echo "extension=bcmath.so" > /build/php-conf/bcmath.ini \
-    && echo "extension=exif.so" > /build/php-conf/exif.ini
+# Collecte des extensions dans un dossier plat et préparation des .ini
+# On utilise des chemins absolus dans les .ini pour garantir le chargement dans l'image finale
+RUN mkdir -p /build/php-extensions \
+    && cp $(php-config --extension-dir)/*.so /build/php-extensions/ \
+    && mkdir -p /build/php-conf \
+    && for ext in pdo_mysql pdo_pgsql gd intl mbstring zip soap bcmath exif; do \
+       echo "extension=/usr/local/lib/php/extensions/${ext}.so" > /build/php-conf/${ext}.ini; \
+    done
 
 # Versions
 ARG FILESENDER_VERSION=3.3
@@ -72,8 +69,8 @@ LABEL org.opencontainers.image.source="https://github.com/mecmus/helm-charts"
 LABEL org.opencontainers.image.description="FileSender v${FILESENDER_VERSION} (branch 3.3) with SimpleSAMLphp based on Hardened PHP"
 LABEL org.opencontainers.image.version="${FILESENDER_VERSION}"
 
-# Copie des extensions compilées
-COPY --from=builder /usr/local/lib/php/extensions /usr/local/lib/php/extensions
+# Copie des extensions compilées vers un dossier fixe
+COPY --from=builder /build/php-extensions /usr/local/lib/php/extensions
 # Copie des configurations d'extensions préparées dans $PHP_INI_DIR/conf.d/
 COPY --from=builder /build/php-conf/ $PHP_INI_DIR/conf.d/
 
