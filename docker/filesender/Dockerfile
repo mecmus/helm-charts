@@ -1,100 +1,75 @@
-# Stage 1: Builder - Compilation des extensions et préparation des fichiers
+# Stage 1: Builder - Compilation et collecte des dépendances
 FROM dhi.io/php:8.5.0-dev AS builder
 
 USER root
 
-# Installation des dépendances de build pour les extensions PHP requises par FileSender
+# Installation des dépendances de build
 RUN apt-get update && apt-get install -y \
-    curl \
-    tar \
-    git \
-    unzip \
-    libpq-dev \
-    libpng-dev \
-    libjpeg-dev \
-    libfreetype6-dev \
-    libicu-dev \
-    libzip-dev \
-    libonig-dev \
-    libxml2-dev \
-    libpcre2-dev \
-    libpng-dev \
-    libpq5 \
-    libzip4 \
+    curl tar git unzip \
+    libpq-dev libpng-dev libjpeg-dev libfreetype6-dev \
+    libicu-dev libzip-dev libonig-dev libxml2-dev libpcre2-dev \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Compilation des extensions PHP nécessaires
-# DHI fournit les sources dans $PHP_SRC_DIR
+# Compilation des extensions PHP requises par FileSender (non incluses nativement)
+# Note: intl et mbstring sont déjà inclus dans l'image DHI de base
 RUN cd $PHP_SRC_DIR/ext/pdo_mysql && phpize && ./configure && make -j$(nproc) && make install \
     && cd $PHP_SRC_DIR/ext/pdo_pgsql && phpize && ./configure && make -j$(nproc) && make install \
     && cd $PHP_SRC_DIR/ext/gd && phpize && ./configure --with-freetype --with-jpeg && make -j$(nproc) && make install \
-    && cd $PHP_SRC_DIR/ext/intl && phpize && ./configure && make -j$(nproc) && make install \
-    && cd $PHP_SRC_DIR/ext/mbstring && phpize && ./configure && make -j$(nproc) && make install \
     && cd $PHP_SRC_DIR/ext/zip && phpize && ./configure && make -j$(nproc) && make install \
     && cd $PHP_SRC_DIR/ext/soap && phpize && ./configure && make -j$(nproc) && make install \
     && cd $PHP_SRC_DIR/ext/bcmath && phpize && ./configure && make -j$(nproc) && make install \
     && cd $PHP_SRC_DIR/ext/exif && phpize && ./configure && make -j$(nproc) && make install
 
-# Collecte des extensions dans un dossier plat et préparation des .ini
-# On utilise des chemins absolus dans les .ini pour garantir le chargement dans l'image finale
-RUN mkdir -p /build/php-extensions \
-    && cp $(php-config --extension-dir)/*.so /build/php-extensions/ \
-    && mkdir -p /build/php-conf \
-    && for ext in pdo_mysql pdo_pgsql gd zip soap bcmath exif; do \
-       echo "extension=/usr/local/lib/php/extensions/${ext}.so" > /build/php-conf/${ext}.ini; \
+# Préparation de la structure de collecte
+RUN mkdir -p /build/php-extensions /build/lib /build/php-conf
+
+# Collecte des extensions (.so)
+RUN cp $(php-config --extension-dir)/*.so /build/php-extensions/
+
+# Collecte des bibliothèques système partagées (.so) nécessaires
+# Sans package manager au runtime, nous devons copier les libs système dépendantes
+RUN for so in /build/php-extensions/*.so; do \
+      ldd "$so" | grep "=> /" | awk '{print $3}' | xargs -I '{}' cp -vL '{}' /build/lib/; \
+    done || true
+
+# Génération des fichiers de configuration .ini
+RUN for ext in pdo_mysql pdo_pgsql gd zip soap bcmath exif; do \
+       echo "extension=${ext}.so" > /build/php-conf/${ext}.ini; \
     done
 
-# Versions
+# Préparation de l'application
 ARG FILESENDER_VERSION=3.3
 ARG SIMPLESAMLPHP_VERSION=2.2.3
-
 WORKDIR /build/app
-
-# Téléchargement et extraction de FileSender (Branche master3 pour v3.3)
-RUN git clone --depth 1 --branch master3 https://github.com/filesender/filesender.git filesender
-
-# Téléchargement et extraction de SimpleSAMLphp
-RUN curl -L https://github.com/simplesamlphp/simplesamlphp/releases/download/v${SIMPLESAMLPHP_VERSION}/simplesamlphp-${SIMPLESAMLPHP_VERSION}-full.tar.gz | tar xz \
-    && mv simplesamlphp-${SIMPLESAMLPHP_VERSION} simplesaml
-
-# Création des dossiers de stockage et logs (UID 1000 pour DHI)
-RUN mkdir -p filesender/files filesender/tmp filesender/log \
-    && chown -R 1000:1000 filesender simplesaml
+RUN git clone --depth 1 --branch master3 https://github.com/filesender/filesender.git filesender && \
+    curl -L https://github.com/simplesamlphp/simplesamlphp/releases/download/v${SIMPLESAMLPHP_VERSION}/simplesamlphp-${SIMPLESAMLPHP_VERSION}-full.tar.gz | tar xz && \
+    mv simplesamlphp-${SIMPLESAMLPHP_VERSION} simplesaml && \
+    mkdir -p filesender/files filesender/tmp filesender/log && \
+    chown -R 1000:1000 filesender simplesaml
 
 # Stage 2: Runtime - Image sécurisée Docker Hardened
 FROM dhi.io/php:8.5.0-fpm
 
-# Installation des dépendances runtime nécessaires pour les extensions PHP compilées
-# Note: On utilise apt-get car le stage runtime de DHI est basé sur Debian/Ubuntu
-# mais on doit vérifier si apt est disponible. Si DHI est vraiment hardened (sans package manager),
-# il faudra copier les .so des librairies système (moins recommandé).
-USER root
-RUN apt-get update && apt-get install -y \
-    libpng16-16 \
-    libjpeg62-turbo \
-    libfreetype6 \
-    libicu72 \
-    libzip4 \
-    libpq5 \
-    libonig5 \
-    && apt-get clean && rm -rf /var/lib/apt/lists/*
-
-# Information sur la version
+# Information sur la version (Utilisé par la CI)
 ARG FILESENDER_VERSION=3.3
 
 # Metadata
-LABEL org.opencontainers.image.source="https://github.com/mecmus/helm-charts"
-LABEL org.opencontainers.image.description="FileSender v${FILESENDER_VERSION} (branch 3.3) with SimpleSAMLphp based on Hardened PHP"
-LABEL org.opencontainers.image.version="${FILESENDER_VERSION}"
+LABEL org.opencontainers.image.source="https://github.com/mecmus/helm-charts" \
+      org.opencontainers.image.description="FileSender v${FILESENDER_VERSION} Hardened Production Image" \
+      org.opencontainers.image.version="${FILESENDER_VERSION}"
 
-# Copie des extensions compilées vers un dossier fixe
-COPY --from=builder /build/php-extensions /usr/local/lib/php/extensions
-# Copie des configurations d'extensions préparées dans $PHP_INI_DIR/conf.d/
-COPY --from=builder /build/php-conf/ $PHP_INI_DIR/conf.d/
+# 1. Copie des librairies système (car apt-get est absent)
+COPY --from=builder /build/lib/ /usr/lib/
 
-# Copie des fichiers préparés
+# 2. Copie des extensions PHP
+COPY --from=builder /build/php-extensions/ /usr/local/lib/php/extensions/
+
+# 3. Copie de la configuration PHP
+COPY --from=builder /build/php-conf/ /opt/php-8.5/etc/php/conf.d/
+
+# 4. Copie des fichiers applicatifs avec les bonnes permissions non-root
 COPY --from=builder --chown=1000:1000 /build/app/filesender /var/www/html
 COPY --from=builder --chown=1000:1000 /build/app/simplesaml /var/www/simplesaml
 
-# L'utilisateur par défaut de DHI est conservé (non-root)
+# Utilisation de l'utilisateur non-privilégié par défaut de DHI
 USER 1000
