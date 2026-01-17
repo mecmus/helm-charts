@@ -13,6 +13,16 @@ entries:
   filesender:
   - apiVersion: v2
     appVersion: "3.3"
+    created: "2026-01-17T22:12:48.937319161Z"
+    description: A Helm chart for Kubernetes
+    digest: 85f1d844b3e85d352f269aede66d3481b923122a39ba268407ff54329132f43e
+    name: filesender
+    type: application
+    urls:
+    - https://github.com/mecmus/helm-charts/releases/download/filesender-3.3.4/filesender-3.3.4.tgz
+    version: 3.3.4
+  - apiVersion: v2
+    appVersion: "3.3"
     created: "2026-01-16T17:50:06.170286434Z"
     description: A Helm chart for Kubernetes
     digest: 337df58208d94a3537446759481e4deb421da8f73a0c04f6eea11e7acb55387e
@@ -51,4 +61,4 @@ entries:
     urls:
     - https://github.com/mecmus/helm-charts/releases/download/filesender-3.3.0/filesender-3.3.0.tgz
     version: 3.3.0
-generated: "2026-01-16T17:50:06.170302594Z"
+generated: "2026-01-17T22:12:48.93734516Z"
