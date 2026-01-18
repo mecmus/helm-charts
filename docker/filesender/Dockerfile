@@ -60,7 +60,6 @@ LABEL org.opencontainers.image.source="https://github.com/mecmus/helm-charts" \
 COPY --from=builder /build/lib/ /usr/lib/x86_64-linux-gnu/
 
 # 2. Copie des extensions PHP vers le chemin attendu par PHP 8.5 dans DHI
-# D'après les logs, le chemin est /opt/php-8.5/lib/php/extensions/no-debug-non-zts-20250925/
 COPY --from=builder /build/php-extensions/ /opt/php-8.5/lib/php/extensions/no-debug-non-zts-20250925/
 
 # 3. Copie de la configuration PHP
@@ -69,5 +68,8 @@ COPY --from=builder /build/php-conf/ /opt/php-8.5/etc/php/conf.d/
 # 4. Copie des fichiers applicatifs
 COPY --from=builder --chown=1000:1000 /build/app/filesender /var/www/html
 COPY --from=builder --chown=1000:1000 /build/app/simplesaml /var/www/simplesaml
+
+# Port PHP-FPM
+EXPOSE 9000
 
 USER 1000
