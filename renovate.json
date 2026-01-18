@@ -24,7 +24,7 @@
   ],
   "customManagers": [
     {
-      "customType": "dockerfile",
+      "customType": "regex",
       "fileMatch": ["(^|/)Dockerfile$"],
       "matchStrings": [
         "FROM dhi.io/php:(?<currentValue>.*?)-fpm"

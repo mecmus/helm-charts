@@ -17,7 +17,7 @@ jobs:
       packages: write
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Login to DHI Registry
         uses: docker/login-action@v3
@@ -36,14 +36,15 @@ jobs:
       - name: Extract versions
         id: vars
         run: |
-          FS_VERSION=$(grep 'ARG FILESENDER_VERSION=' docker/filesender/Dockerfile | cut -d'=' -f2)
-          PHP_VERSION=$(grep 'FROM dhi.io/php:' docker/filesender/Dockerfile | cut -d':' -f2 | cut -d'-' -f1)
-          echo "fs_version=${FS_VERSION}" >> $GITHUB_OUTPUT
-          echo "php_version=${PHP_VERSION}" >> $GITHUB_OUTPUT
-          echo "image_tag=${FS_VERSION}-php${PHP_VERSION}" >> $GITHUB_OUTPUT
+          FS_VERSION=$(grep 'ARG FILESENDER_VERSION=' docker/filesender/Dockerfile | head -n 1 | cut -d'=' -f2 | tr -d '"' | tr -d ' ')
+          PHP_IMAGE=$(grep 'FROM dhi.io/php:' docker/filesender/Dockerfile | cut -d' ' -f2)
+          PHP_VERSION=$(echo $PHP_IMAGE | cut -d':' -f2 | cut -d'-' -f1)
+          echo "fs_version=${FS_VERSION}" >> "$GITHUB_OUTPUT"
+          echo "php_version=${PHP_VERSION}" >> "$GITHUB_OUTPUT"
+          echo "image_tag=${FS_VERSION}-php${PHP_VERSION}" >> "$GITHUB_OUTPUT"
 
       - name: Build and push
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: ./docker/filesender
           push: true

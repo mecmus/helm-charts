@@ -41,8 +41,8 @@ spec:
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
-            - name: http
-              containerPort: {{ .Values.service.port }}
+            - name: fastcgi
+              containerPort: 9000
               protocol: TCP
           {{- with .Values.livenessProbe }}
           livenessProbe:
@@ -63,6 +63,8 @@ spec:
               readOnly: true
             - name: storage
               mountPath: /var/www/html/files
+            - name: db
+              mountPath: /var/www/html/db
             - name: tmp
               mountPath: /var/www/html/tmp
             - name: log
@@ -75,6 +77,13 @@ spec:
           configMap:
             name: {{ include "filesender.fullname" . }}-config
         - name: storage
+          {{- if .Values.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ include "filesender.fullname" . }}-storage
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+        - name: db
           {{- if .Values.persistence.enabled }}
           persistentVolumeClaim:
             claimName: {{ include "filesender.fullname" . }}-storage
