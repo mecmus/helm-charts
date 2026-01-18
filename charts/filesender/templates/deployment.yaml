@@ -5,57 +5,23 @@ metadata:
   labels:
     {{- include "filesender.labels" . | nindent 4 }}
 spec:
-  {{- if not .Values.autoscaling.enabled }}
   replicas: {{ .Values.replicaCount }}
-  {{- end }}
   selector:
     matchLabels:
       {{- include "filesender.selectorLabels" . | nindent 6 }}
   template:
     metadata:
-      {{- with .Values.podAnnotations }}
-      annotations:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
       labels:
         {{- include "filesender.labels" . | nindent 8 }}
-        {{- with .Values.podLabels }}
-        {{- toYaml . | nindent 8 }}
-        {{- end }}
     spec:
-      {{- with .Values.imagePullSecrets }}
-      imagePullSecrets:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
-      serviceAccountName: {{ include "filesender.serviceAccountName" . }}
-      {{- with .Values.podSecurityContext }}
-      securityContext:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
       containers:
         - name: {{ .Chart.Name }}
-          {{- with .Values.securityContext }}
-          securityContext:
-            {{- toYaml . | nindent 12 }}
-          {{- end }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
-            - name: http
-              containerPort: {{ .Values.service.port }}
+            - name: fastcgi
+              containerPort: 9000
               protocol: TCP
-          {{- with .Values.livenessProbe }}
-          livenessProbe:
-            {{- toYaml . | nindent 12 }}
-          {{- end }}
-          {{- with .Values.readinessProbe }}
-          readinessProbe:
-            {{- toYaml . | nindent 12 }}
-          {{- end }}
-          {{- with .Values.resources }}
-          resources:
-            {{- toYaml . | nindent 12 }}
-          {{- end }}
           volumeMounts:
             - name: config
               mountPath: /var/www/html/config/config.php
@@ -63,40 +29,15 @@ spec:
               readOnly: true
             - name: storage
               mountPath: /var/www/html/files
-            - name: tmp
-              mountPath: /var/www/html/tmp
-            - name: log
-              mountPath: /var/www/html/log
-          {{- with .Values.volumeMounts }}
-            {{- toYaml . | nindent 12 }}
-          {{- end }}
+            - name: db
+              mountPath: /var/www/html/db
       volumes:
         - name: config
           configMap:
             name: {{ include "filesender.fullname" . }}-config
         - name: storage
-          {{- if .Values.persistence.enabled }}
           persistentVolumeClaim:
             claimName: {{ include "filesender.fullname" . }}-storage
-          {{- else }}
-          emptyDir: {}
-          {{- end }}
-        - name: tmp
-          emptyDir: {}
-        - name: log
-          emptyDir: {}
-      {{- with .Values.volumes }}
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
-      {{- with .Values.nodeSelector }}
-      nodeSelector:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
-      {{- with .Values.affinity }}
-      affinity:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
-      {{- with .Values.tolerations }}
-      tolerations:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
+        - name: db
+          persistentVolumeClaim:
+            claimName: {{ include "filesender.fullname" . }}-storage
