@@ -1,13 +1,14 @@
 # Stage 1: Builder - Préparation des fichiers et compilation
-FROM php:8.3-fpm-bookworm AS builder
+# Utilisation de PHP 8.4 pour avoir les versions récentes de librairies
+FROM php:8.4-fpm-bookworm AS builder
 
 # Installation des dépendances système
+# libsqlite3-dev et pkg-config sont critiques pour pdo_sqlite
 RUN apt-get update && apt-get install -y \
     curl tar git unzip libsqlite3-dev libpng-dev libicu-dev libonig-dev pkg-config \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Installation des extensions PHP
-# Note: pdo_sqlite est souvent déjà présent ou nécessite libsqlite3-dev
 RUN docker-php-ext-install mbstring gd intl pdo pdo_sqlite
 
 WORKDIR /build
@@ -31,16 +32,16 @@ RUN mkdir -p /prep/var/www/html/files \
     && chown -R 1000:1000 /prep/var/www/html
 
 # Stage 2: Runtime - Passage sur une image stable avec Shell
-FROM php:8.3-fpm-bookworm
+FROM php:8.4-fpm-bookworm
 
-# Réinstallation des dépendances runtime nécessaires pour les extensions partagées (libpng, libicu, libsqlite)
+# Réinstallation des dépendances runtime
 RUN apt-get update && apt-get install -y \
-    libsqlite3-0 libpng16-16 libicu72 \
+    libsqlite3-0 libpng16-16 libicu72 pkg-config libsqlite3-dev \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /var/www/html
 
-# Installation des extensions dans le runtime
+# Installation des extensions dans le runtime également pour garantir la cohérence
 RUN docker-php-ext-install pdo_sqlite mbstring gd intl
 
 # Copie des fichiers depuis le builder
