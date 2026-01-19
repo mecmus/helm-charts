@@ -14,8 +14,21 @@ spec:
       labels:
         {{- include "filesender.labels" . | nindent 8 }}
     spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      initContainers:
+        - name: install-code
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          command: ["sh", "-c", "cp -rp /var/www/html/* /shared/html/ && cp -rp /var/www/simplesaml/* /shared/simplesaml/ && chown -R 33:33 /shared"]
+          volumeMounts:
+            - name: code
+              mountPath: /shared/html
+            - name: simplesaml-code
+              mountPath: /shared/simplesaml
       containers:
-        - name: {{ .Chart.Name }}
+        - name: php
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
@@ -23,6 +36,10 @@ spec:
               containerPort: 9000
               protocol: TCP
           volumeMounts:
+            - name: code
+              mountPath: /var/www/html
+            - name: simplesaml-code
+              mountPath: /var/www/simplesaml
             - name: config
               mountPath: /var/www/html/config/config.php
               subPath: config.php
@@ -31,7 +48,26 @@ spec:
               mountPath: /var/www/html/files
             - name: db
               mountPath: /var/www/html/db
+        - name: nginx
+          image: nginx:alpine
+          ports:
+            - name: http
+              containerPort: 80
+              protocol: TCP
+          volumeMounts:
+            - name: code
+              mountPath: /var/www/html
+            - name: simplesaml-code
+              mountPath: /var/www/simplesaml
+            - name: config
+              mountPath: /etc/nginx/nginx.conf
+              subPath: nginx.conf
+              readOnly: true
       volumes:
+        - name: code
+          emptyDir: {}
+        - name: simplesaml-code
+          emptyDir: {}
         - name: config
           configMap:
             name: {{ include "filesender.fullname" . }}-config

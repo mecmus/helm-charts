@@ -2,7 +2,7 @@ replicaCount: 1
 image:
   repository: ghcr.io/mecmus/filesender
   pullPolicy: IfNotPresent
-  tag: "3.3-php"
+  tag: "3.3-php8.4.0"
 service:
   type: ClusterIP
   port: 80
@@ -31,8 +31,7 @@ ingress:
   enabled: true
   className: "nginx"
   annotations:
-    nginx.ingress.kubernetes.io/backend-protocol: "FASTCGI"
-    nginx.ingress.kubernetes.io/fastcgi-index: "index.php"
+    nginx.ingress.kubernetes.io/proxy-body-size: "2g"
   hosts:
     - host: filesender.lan
       paths:
