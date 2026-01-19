@@ -3,7 +3,7 @@ FROM php:8.4-fpm-bookworm AS builder
 
 # Installation des dépendances système nécessaires à la compilation des extensions
 RUN apt-get update && apt-get install -y \
-    curl tar git unzip libsqlite3-dev libpng-dev libicu-dev \
+    curl tar git unzip libsqlite3-dev libpng-dev libicu-dev libonig-dev \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Installation des extensions PHP requises par FileSender v3
