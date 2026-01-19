@@ -2,7 +2,7 @@ replicaCount: 1
 image:
   repository: ghcr.io/mecmus/filesender
   pullPolicy: IfNotPresent
-  tag: "3.3-php8.5.0"
+  tag: "3.3-php"
 service:
   type: ClusterIP
   port: 80
