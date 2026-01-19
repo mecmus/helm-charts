@@ -1,12 +1,12 @@
 # Stage 1: Builder - Préparation des fichiers et compilation
-FROM php:8.4-fpm-bookworm AS builder
+FROM php:8.3-fpm-bookworm AS builder
 
-# Installation des dépendances système nécessaires à la compilation des extensions
+# Installation des dépendances système
 RUN apt-get update && apt-get install -y \
     curl tar git unzip libsqlite3-dev libpng-dev libicu-dev libonig-dev \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Installation des extensions PHP requises par FileSender v3
+# Installation des extensions PHP
 RUN docker-php-ext-install pdo_sqlite mbstring gd intl
 
 WORKDIR /build
@@ -16,62 +16,41 @@ ARG SIMPLESAMLPHP_VERSION=2.4.2
 # Récupération de FileSender
 RUN git clone --depth 1 --branch master3 https://github.com/filesender/filesender.git filesender
 
-# Récupération de SimpleSAMLphp (v2.4+ requis pour PHP 8.4)
+# Récupération de SimpleSAMLphp
 RUN curl -L https://github.com/simplesamlphp/simplesamlphp/releases/download/v${SIMPLESAMLPHP_VERSION}/simplesamlphp-${SIMPLESAMLPHP_VERSION}-full.tar.gz | tar xz \
     && mv simplesamlphp-${SIMPLESAMLPHP_VERSION} simplesaml
 
-# Préparation de l'arborescence
+# Préparation de l'arborescence et configuration FPM
 RUN mkdir -p /prep/var/www/html/files \
     /prep/var/www/html/tmp \
     /prep/var/www/html/log \
     /prep/var/www/html/db \
-    /prep/usr/local/etc/php-fpm.d \
-    /prep/usr/local/etc/php/conf.d
+    && cp /usr/local/etc/php-fpm.d/www.conf.default /prep/www.conf \
+    && sed -i 's/listen = 127.0.0.1:9000/listen = [::]:9000/g' /prep/www.conf \
+    && chown -R 1000:1000 /prep/var/www/html
 
-# Configuration FPM (Fix 502) : On écoute sur toutes les interfaces sur le port 9000
-RUN cp /usr/local/etc/php-fpm.d/www.conf.default /prep/usr/local/etc/php-fpm.d/www.conf \
-    && sed -i 's/listen = 127.0.0.1:9000/listen = [::]:9000/g' /prep/usr/local/etc/php-fpm.d/www.conf
+# Stage 2: Runtime - Passage sur une image stable avec Shell
+FROM php:8.3-fpm-bookworm
 
-# Script de détection dynamique et copie des extensions pour le runtime
-# Ce script crée une liste de commandes COPY pour le stage final (simulation via un répertoire tempo)
-RUN EXT_DIR=$(php-config --extension-dir) \
-    && mkdir -p /prep/extensions \
-    && cp $EXT_DIR/pdo_sqlite.so /prep/extensions/ \
-    && cp $EXT_DIR/mbstring.so /prep/extensions/ \
-    && cp $EXT_DIR/gd.so /prep/extensions/ \
-    && cp $EXT_DIR/intl.so /prep/extensions/ \
-    && echo $EXT_DIR > /prep/ext_dir_path
-
-# Fixer les droits pour l'utilisateur 1000 (standard non-root)
-RUN chown -R 1000:1000 /prep/var/www/html
-
-# Stage 2: Runtime - Passage sur l'image sécurisée DHI
-# On utilise la version 8.5 car c'est celle de ton dernier test, 
-# mais avec une logique de copie de répertoire d'extension dynamique
-FROM dhi.io/php:8.5.0-fpm
+# Réinstallation des dépendances runtime nécessaires pour les extensions partagées (libpng, libicu, libsqlite)
+RUN apt-get update && apt-get install -y \
+    libsqlite3-0 libpng16-16 libicu72 \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /var/www/html
 
-# On récupère le chemin dynamique du répertoire d'extensions du Builder
-# Note: On doit s'assurer que l'image DHI utilise une structure compatible
-# Si DHI utilise /opt/php-8.5, on doit viser ce dossier.
-# Le log indiquait: /opt/php-8.5/lib/php/extensions/no-debug-non-zts-20250925/
+# Installation des extensions dans le runtime
+RUN docker-php-ext-install pdo_sqlite mbstring gd intl
 
-COPY --from=builder --chown=1000:1000 /build/filesender /var/www/html
-COPY --from=builder --chown=1000:1000 /build/simplesaml /var/www/simplesaml
-COPY --from=builder --chown=1000:1000 /prep/var/www/html /var/www/html
+# Copie des fichiers depuis le builder
+COPY --from=builder --chown=www-data:www-data /build/filesender /var/www/html
+COPY --from=builder --chown=www-data:www-data /build/simplesaml /var/www/simplesaml
+COPY --from=builder --chown=www-data:www-data /prep/var/www/html /var/www/html
 
-# Injection des configurations
-COPY --from=builder /prep/usr/local/etc/php-fpm.d/www.conf /usr/local/etc/php-fpm.d/www.conf
+# Injection de la configuration FPM
+COPY --from=builder /prep/www.conf /usr/local/etc/php-fpm.d/www.conf
 
-# Injection des extensions dans le BON répertoire (détecté via le log utilisateur)
-# IMPORTANT: Le chemin 20250925 correspond à l'erreur vue dans les logs du pod
-COPY --from=builder /prep/extensions/*.so /opt/php-8.5/lib/php/extensions/no-debug-non-zts-20250925/
+# FileSender v3 nécessite que certains dossiers soient accessibles en écriture
+RUN chown -R www-data:www-data /var/www/html/tmp /var/www/html/log /var/www/html/files /var/www/html/db
 
-# Activation des extensions via le dossier conf.d de PHP
-RUN echo "extension=pdo_sqlite.so" > /usr/local/etc/php/conf.d/docker-php-ext-pdo_sqlite.ini \
-    && echo "extension=mbstring.so" >> /usr/local/etc/php/conf.d/docker-php-ext-mbstring.ini \
-    && echo "extension=gd.so" >> /usr/local/etc/php/conf.d/docker-php-ext-gd.ini \
-    && echo "extension=intl.so" >> /usr/local/etc/php/conf.d/docker-php-ext-intl.ini
-
-USER 1000
+USER www-data
