@@ -21,6 +21,12 @@ config:
     name: "filesender"
     user: "filesender"
     password: ""
+  sso:
+    enabled: false
+    sp_entity_id: "http://filesender.lan"
+    idp_entity_id: "https://sts.windows.net/TENANT_ID/"
+    idp_sso_service_url: "https://login.microsoftonline.com/TENANT_ID/saml2"
+    idp_certificate: ""
 ingress:
   enabled: true
   className: "nginx"
