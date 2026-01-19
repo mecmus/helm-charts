@@ -3,11 +3,12 @@ FROM php:8.3-fpm-bookworm AS builder
 
 # Installation des dépendances système
 RUN apt-get update && apt-get install -y \
-    curl tar git unzip libsqlite3-dev libpng-dev libicu-dev libonig-dev \
+    curl tar git unzip libsqlite3-dev libpng-dev libicu-dev libonig-dev pkg-config \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Installation des extensions PHP
-RUN docker-php-ext-install pdo_sqlite mbstring gd intl
+# Note: pdo_sqlite est souvent déjà présent ou nécessite libsqlite3-dev
+RUN docker-php-ext-install mbstring gd intl pdo pdo_sqlite
 
 WORKDIR /build
 ARG FILESENDER_VERSION=3.3
