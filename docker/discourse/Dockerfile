@@ -31,10 +31,6 @@ RUN bundle config --global silence_root_warning 1 && \
     bundle config set --local without 'development test' && \
     bundle install --jobs 4
 
-# Create necessary directories
-RUN mkdir -p /shared/log /shared/uploads /shared/backups && \
-    chmod -R 755 /shared
-
 # Copy boot extras script
 COPY --chown=discourse:discourse boot_extras.sh /usr/local/bin/boot_extras.sh
 RUN chmod +x /usr/local/bin/boot_extras.sh

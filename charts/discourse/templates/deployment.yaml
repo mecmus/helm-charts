@@ -68,6 +68,13 @@ spec:
               value: {{ include "discourse.redis.host" . | quote }}
             - name: DISCOURSE_REDIS_PORT
               value: {{ include "discourse.redis.port" . | quote }}
+            {{- if or (and .Values.redis.enabled .Values.redis.auth.enabled) .Values.externalRedis.password }}
+            - name: DISCOURSE_REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "discourse.redis.secretName" . }}
+                  key: {{ include "discourse.redis.secretKey" . }}
+            {{- end }}
             {{- if .Values.discourse.precompileAssets }}
             - name: DISCOURSE_PRECOMPILE_ASSETS
               value: "true"

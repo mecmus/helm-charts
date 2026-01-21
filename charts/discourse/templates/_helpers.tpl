@@ -148,3 +148,33 @@ Redis port
 {{- .Values.externalRedis.port }}
 {{- end }}
 {{- end }}
+
+{{/*
+Redis password secret name
+*/}}
+{{- define "discourse.redis.secretName" -}}
+{{- if .Values.redis.enabled }}
+{{- if .Values.redis.auth.enabled }}
+{{- printf "%s-redis" .Release.Name }}
+{{- else }}
+{{- print "" }}
+{{- end }}
+{{- else }}
+{{- if .Values.externalRedis.password }}
+{{- printf "%s-redis-external" (include "discourse.fullname" .) }}
+{{- else }}
+{{- print "" }}
+{{- end }}
+{{- end }}
+{{- end }}
+
+{{/*
+Redis password secret key
+*/}}
+{{- define "discourse.redis.secretKey" -}}
+{{- if .Values.redis.enabled }}
+{{- print "redis-password" }}
+{{- else }}
+{{- print "redis-password" }}
+{{- end }}
+{{- end }}
