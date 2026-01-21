@@ -1,0 +1,39 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "discourse.fullname" . }}
+  labels:
+    {{- include "discourse.labels" . | nindent 4 }}
+data:
+  DISCOURSE_HOSTNAME: {{ .Values.discourse.hostname | quote }}
+  DISCOURSE_DEVELOPER_EMAILS: {{ .Values.discourse.developerEmails | quote }}
+  DISCOURSE_DB_HOST: {{ include "discourse.database.host" . | quote }}
+  DISCOURSE_DB_PORT: {{ include "discourse.database.port" . | quote }}
+  DISCOURSE_DB_NAME: {{ include "discourse.database.name" . | quote }}
+  DISCOURSE_DB_USERNAME: {{ include "discourse.database.username" . | quote }}
+  DISCOURSE_REDIS_HOST: {{ include "discourse.redis.host" . | quote }}
+  DISCOURSE_REDIS_PORT: {{ include "discourse.redis.port" . | quote }}
+  {{- if .Values.discourse.smtp.address }}
+  DISCOURSE_SMTP_ADDRESS: {{ .Values.discourse.smtp.address | quote }}
+  DISCOURSE_SMTP_PORT: {{ .Values.discourse.smtp.port | quote }}
+  DISCOURSE_SMTP_USER_NAME: {{ .Values.discourse.smtp.username | quote }}
+  DISCOURSE_SMTP_DOMAIN: {{ .Values.discourse.smtp.domain | quote }}
+  DISCOURSE_SMTP_AUTHENTICATION: {{ .Values.discourse.smtp.authentication | quote }}
+  DISCOURSE_SMTP_ENABLE_START_TLS: {{ .Values.discourse.smtp.enableStartTls | quote }}
+  DISCOURSE_SMTP_OPEN_TIMEOUT: {{ .Values.discourse.smtp.openTimeout | quote }}
+  DISCOURSE_SMTP_READ_TIMEOUT: {{ .Values.discourse.smtp.readTimeout | quote }}
+  {{- end }}
+  {{- if .Values.discourse.s3.enabled }}
+  DISCOURSE_USE_S3: "true"
+  DISCOURSE_S3_BUCKET: {{ .Values.discourse.s3.bucket | quote }}
+  DISCOURSE_S3_REGION: {{ .Values.discourse.s3.region | quote }}
+  {{- if .Values.discourse.s3.endpoint }}
+  DISCOURSE_S3_ENDPOINT: {{ .Values.discourse.s3.endpoint | quote }}
+  {{- end }}
+  {{- if .Values.discourse.s3.cdnUrl }}
+  DISCOURSE_S3_CDN_URL: {{ .Values.discourse.s3.cdnUrl | quote }}
+  {{- end }}
+  {{- end }}
+  {{- if .Values.discourse.precompileAssets }}
+  DISCOURSE_PRECOMPILE_ASSETS: "true"
+  {{- end }}
