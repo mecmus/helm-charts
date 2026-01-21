@@ -1,0 +1,259 @@
+# Default values for discourse.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+replicaCount: 1
+
+image:
+  repository: ghcr.io/mecmus/discourse
+  pullPolicy: IfNotPresent
+  tag: "3.4.0-base2.0.20250114-0429"
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  automount: true
+  annotations: {}
+  name: ""
+
+podAnnotations: {}
+podLabels: {}
+
+podSecurityContext:
+  fsGroup: 1000
+
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  capabilities:
+    drop:
+    - ALL
+  readOnlyRootFilesystem: false
+
+service:
+  type: ClusterIP
+  port: 3000
+
+# Discourse configuration
+discourse:
+  # REQUIRED: Forum hostname
+  hostname: ""
+  
+  # REQUIRED: Developer emails (comma-separated)
+  developerEmails: ""
+  
+  # SMTP configuration (REQUIRED for email functionality)
+  smtp:
+    address: ""
+    port: 587
+    username: ""
+    password: ""
+    # Use existing secret for SMTP password
+    existingSecret: ""
+    existingSecretKey: "smtp-password"
+    domain: ""
+    authentication: "plain"
+    enableStartTls: "true"
+    openTimeout: 10
+    readTimeout: 10
+  
+  # S3 uploads configuration (optional)
+  s3:
+    enabled: false
+    bucket: ""
+    region: ""
+    endpoint: ""
+    accessKeyId: ""
+    secretAccessKey: ""
+    # Use existing secret for S3 credentials
+    existingSecret: ""
+    cdnUrl: ""
+  
+  # Additional environment variables
+  extraEnv: []
+  # - name: DISCOURSE_FORCE_HTTPS
+  #   value: "true"
+  
+  # Plugins to install (git URLs)
+  plugins: []
+  # - https://github.com/discourse/docker_manager.git
+  # - https://github.com/discourse/discourse-solved.git
+  
+  # Asset precompilation (slower startup but better performance)
+  precompileAssets: false
+
+# PostgreSQL configuration (using official postgres image)
+postgresql:
+  enabled: true
+  image:
+    repository: postgres
+    tag: "16-alpine"
+    pullPolicy: IfNotPresent
+  auth:
+    username: discourse
+    password: ""
+    # Use existing secret for PostgreSQL password
+    existingSecret: ""
+    existingSecretKey: "postgres-password"
+    database: discourse
+  persistence:
+    enabled: true
+    size: 10Gi
+    storageClass: ""
+    accessModes:
+      - ReadWriteOnce
+  resources:
+    requests:
+      cpu: 250m
+      memory: 256Mi
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+  securityContext:
+    runAsUser: 70
+    runAsGroup: 70
+    fsGroup: 70
+
+# External database configuration (when postgresql.enabled=false)
+externalDatabase:
+  host: ""
+  port: 5432
+  username: discourse
+  password: ""
+  # Use existing secret for external database password
+  existingSecret: ""
+  existingSecretKey: "database-password"
+  database: discourse
+
+# Redis configuration (using official redis image)
+redis:
+  enabled: true
+  image:
+    repository: redis
+    tag: "7-alpine"
+    pullPolicy: IfNotPresent
+  auth:
+    enabled: false
+    password: ""
+    # Use existing secret for Redis password
+    existingSecret: ""
+    existingSecretKey: "redis-password"
+  persistence:
+    enabled: true
+    size: 2Gi
+    storageClass: ""
+    accessModes:
+      - ReadWriteOnce
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  securityContext:
+    runAsUser: 999
+    runAsGroup: 999
+    fsGroup: 999
+
+# External Redis configuration (when redis.enabled=false)
+externalRedis:
+  host: ""
+  port: 6379
+  password: ""
+  # Use existing secret for external Redis password
+  existingSecret: ""
+  existingSecretKey: "redis-password"
+
+# Persistence for Discourse shared storage (uploads, backups, logs)
+persistence:
+  enabled: true
+  size: 20Gi
+  storageClass: ""
+  accessModes:
+    - ReadWriteOnce
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+    # kubernetes.io/ingress.class: nginx
+    # kubernetes.io/tls-acme: "true"
+  hosts:
+    - host: discourse.example.com
+      paths:
+        - path: /
+          pathType: ImplementationSpecific
+  tls: []
+  # - secretName: discourse-tls
+  #   hosts:
+  #     - discourse.example.com
+
+# Gateway API HTTPRoute
+httpRoute:
+  enabled: false
+  annotations: {}
+  parentRefs:
+  - name: gateway
+    sectionName: http
+  hostnames:
+  - discourse.example.com
+  rules:
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /
+
+resources:
+  requests:
+    cpu: 500m
+    memory: 1Gi
+  limits:
+    cpu: 2000m
+    memory: 2Gi
+
+livenessProbe:
+  httpGet:
+    path: /srv/status
+    port: http
+  initialDelaySeconds: 300
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 6
+
+readinessProbe:
+  httpGet:
+    path: /srv/status
+    port: http
+  initialDelaySeconds: 120
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+startupProbe:
+  httpGet:
+    path: /srv/status
+    port: http
+  initialDelaySeconds: 30
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 60
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 80
+  # targetMemoryUtilizationPercentage: 80
+
+volumes: []
+volumeMounts: []
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
