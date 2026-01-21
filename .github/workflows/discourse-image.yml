@@ -8,6 +8,7 @@ on:
     branches:
       - main
       - develop
+      - copilot/add-discourse-helm-chart-again
   schedule:
     # Run daily at 6 AM UTC to check for updates
     - cron: '0 6 * * *'
