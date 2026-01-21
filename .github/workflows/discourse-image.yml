@@ -1,0 +1,120 @@
+name: Build and Push Discourse Image
+
+on:
+  push:
+    paths:
+      - 'docker/discourse/**'
+      - '.github/workflows/discourse-image.yml'
+    branches:
+      - main
+      - develop
+  schedule:
+    # Run daily at 6 AM UTC to check for updates
+    - cron: '0 6 * * *'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Extract versions and check if build needed
+        id: vars
+        run: |
+          # Extract versions from Dockerfile
+          DISCOURSE_VERSION=$(grep 'ARG DISCOURSE_VERSION=' docker/discourse/Dockerfile | cut -d'=' -f2)
+          BASE_VERSION=$(grep 'ARG DISCOURSE_BASE_VERSION=' docker/discourse/Dockerfile | cut -d'=' -f2)
+          
+          # Clean version strings
+          DISCOURSE_VERSION=$(echo $DISCOURSE_VERSION | tr -d '"' | tr -d ' ')
+          BASE_VERSION=$(echo $BASE_VERSION | tr -d '"' | tr -d ' ')
+          
+          # Create image tag
+          IMAGE_TAG="${DISCOURSE_VERSION}-base${BASE_VERSION}"
+          
+          echo "discourse_version=${DISCOURSE_VERSION}" >> "$GITHUB_OUTPUT"
+          echo "base_version=${BASE_VERSION}" >> "$GITHUB_OUTPUT"
+          echo "image_tag=${IMAGE_TAG}" >> "$GITHUB_OUTPUT"
+          
+          # Check if image already exists (for scheduled runs)
+          if [ "${{ github.event_name }}" = "schedule" ]; then
+            IMAGE_EXISTS=$(docker manifest inspect ghcr.io/${{ github.repository_owner }}/discourse:${IMAGE_TAG} > /dev/null 2>&1 && echo "true" || echo "false")
+            echo "image_exists=${IMAGE_EXISTS}" >> "$GITHUB_OUTPUT"
+            
+            if [ "$IMAGE_EXISTS" = "true" ]; then
+              echo "Image already exists, skipping build for scheduled run"
+              echo "skip_build=true" >> "$GITHUB_OUTPUT"
+            else
+              echo "Image does not exist, proceeding with build"
+              echo "skip_build=false" >> "$GITHUB_OUTPUT"
+            fi
+          else
+            echo "skip_build=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build and push
+        if: steps.vars.outputs.skip_build != 'true'
+        uses: docker/build-push-action@v6
+        with:
+          context: ./docker/discourse
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/discourse:${{ steps.vars.outputs.image_tag }}
+            ghcr.io/${{ github.repository_owner }}/discourse:latest
+
+      - name: Update Helm Chart
+        if: steps.vars.outputs.skip_build != 'true' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
+        run: |
+          CHART_FILE="charts/discourse/Chart.yaml"
+          VALUES_FILE="charts/discourse/values.yaml"
+          DISCOURSE_VERSION="${{ steps.vars.outputs.discourse_version }}"
+          
+          # Remove 'v' prefix if present
+          APP_VERSION=$(echo $DISCOURSE_VERSION | sed 's/^v//')
+          
+          # Update appVersion with the Discourse version
+          sed -i "s/^appVersion: .*/appVersion: \"${APP_VERSION}\"/" $CHART_FILE
+          
+          # Increment patch version of the chart
+          CURRENT_CHART_VERSION=$(grep '^version:' $CHART_FILE | awk '{print $2}')
+          
+          # Split version into major.minor.patch
+          MAJOR=$(echo $CURRENT_CHART_VERSION | cut -d'.' -f1)
+          MINOR=$(echo $CURRENT_CHART_VERSION | cut -d'.' -f2)
+          PATCH=$(echo $CURRENT_CHART_VERSION | cut -d'.' -f3)
+          
+          # Increment patch version
+          NEW_PATCH=$((PATCH + 1))
+          NEW_VERSION="${MAJOR}.${MINOR}.${NEW_PATCH}"
+          
+          sed -i "s/^version: .*/version: ${NEW_VERSION}/" $CHART_FILE
+          
+          # Update the image tag in values.yaml
+          sed -i "s/tag: .*/tag: \"${{ steps.vars.outputs.image_tag }}\"/" $VALUES_FILE
+          
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add $CHART_FILE $VALUES_FILE
+          
+          # Push to current branch
+          git commit -m "chore: update discourse to ${{ steps.vars.outputs.image_tag }} [skip ci]"
+          git push origin ${{ github.ref_name }}
