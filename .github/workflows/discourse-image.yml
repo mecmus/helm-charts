@@ -59,6 +59,7 @@ jobs:
             echo "exists=false" >> "$GITHUB_OUTPUT"
             echo "Image does not exist, will build"
           fi
+        continue-on-error: true
 
       - name: Build and push
         if: github.event_name != 'schedule' || steps.check.outputs.exists == 'false'
