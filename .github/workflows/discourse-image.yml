@@ -102,7 +102,7 @@ jobs:
           sed -i "s/^version: .*/version: ${NEW_VERSION}/" $CHART_FILE
           
           # Update image tag in values.yaml
-          sed -i "s/tag: .*/tag: \"${IMAGE_TAG}\"/" $VALUES_FILE
+          sed -i 's/^  tag: .*/  tag: \"'${IMAGE_TAG}'\"/' $VALUES_FILE
           
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"

@@ -19,10 +19,12 @@ echo "PostgreSQL is up!"
 # Wait for Redis
 echo "Waiting for Redis at ${DISCOURSE_REDIS_HOST}:${DISCOURSE_REDIS_PORT}..."
 if [ -n "${DISCOURSE_REDIS_PASSWORD}" ]; then
-  until redis-cli -h "${DISCOURSE_REDIS_HOST}" -p "${DISCOURSE_REDIS_PORT}" -a "${DISCOURSE_REDIS_PASSWORD}" ping 2>/dev/null | grep -q PONG; do
+  export REDISCLI_AUTH="${DISCOURSE_REDIS_PASSWORD}"
+  until redis-cli -h "${DISCOURSE_REDIS_HOST}" -p "${DISCOURSE_REDIS_PORT}" ping 2>/dev/null | grep -q PONG; do
     echo "Redis is unavailable - sleeping"
     sleep 2
   done
+  unset REDISCLI_AUTH
 else
   until redis-cli -h "${DISCOURSE_REDIS_HOST}" -p "${DISCOURSE_REDIS_PORT}" ping 2>/dev/null | grep -q PONG; do
     echo "Redis is unavailable - sleeping"
