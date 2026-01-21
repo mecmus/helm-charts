@@ -20,6 +20,17 @@
       "matchDatasources": ["github-releases"],
       "matchPackageNames": ["filesender/filesender"],
       "extractVersion": "^v?(?<version>.*)$"
+    },
+    {
+      "matchDatasources": ["github-releases"],
+      "matchPackageNames": ["discourse/discourse"],
+      "extractVersion": "^v?(?<version>.*)$",
+      "groupName": "Discourse updates"
+    },
+    {
+      "matchDatasources": ["docker"],
+      "matchPackageNames": ["discourse/base"],
+      "groupName": "Discourse base image updates"
     }
   ],
   "customManagers": [
@@ -39,6 +50,24 @@
         "ARG FILESENDER_VERSION=(?<currentValue>.*)"
       ],
       "depNameTemplate": "filesender/filesender",
+      "datasourceTemplate": "github-releases"
+    },
+    {
+      "customType": "regex",
+      "fileMatch": ["docker/discourse/Dockerfile$"],
+      "matchStrings": [
+        "FROM discourse/base:(?<currentValue>.*)"
+      ],
+      "depNameTemplate": "discourse/base",
+      "datasourceTemplate": "docker"
+    },
+    {
+      "customType": "regex",
+      "fileMatch": ["docker/discourse/Dockerfile$"],
+      "matchStrings": [
+        "ARG DISCOURSE_VERSION=(?<currentValue>.*)"
+      ],
+      "depNameTemplate": "discourse/discourse",
       "datasourceTemplate": "github-releases"
     }
   ]
