@@ -13,6 +13,7 @@ RUN apt-get update && apt-get install -y \
 # Compilation des extensions PHP requises par FileSender
 RUN cd $PHP_SRC_DIR/ext/pdo_mysql && phpize && ./configure && make -j$(nproc) && make install \
     && cd $PHP_SRC_DIR/ext/pdo_pgsql && phpize && ./configure && make -j$(nproc) && make install \
+    && cd $PHP_SRC_DIR/ext/pdo_sqlite && phpize && ./configure && make -j$(nproc) && make install \
     && cd $PHP_SRC_DIR/ext/gd && phpize && ./configure --with-freetype --with-jpeg && make -j$(nproc) && make install \
     && cd $PHP_SRC_DIR/ext/zip && phpize && ./configure && make -j$(nproc) && make install \
     && cd $PHP_SRC_DIR/ext/soap && phpize && ./configure && make -j$(nproc) && make install \
@@ -31,7 +32,7 @@ RUN for so in /build/php-extensions/*.so; do \
     done || true
 
 # Génération des fichiers de configuration .ini
-RUN for ext in pdo_mysql pdo_pgsql gd zip soap bcmath exif; do \
+RUN for ext in pdo_mysql pdo_pgsql pdo_sqlite gd zip soap bcmath exif; do \
        echo "extension=${ext}.so" > /build/php-conf/${ext}.ini; \
     done
 
@@ -68,6 +69,14 @@ COPY --from=builder /build/php-conf/ /opt/php-8.5/etc/php/conf.d/
 # 4. Copie des fichiers applicatifs
 COPY --from=builder --chown=1000:1000 /build/app/filesender /var/www/html
 COPY --from=builder --chown=1000:1000 /build/app/simplesaml /var/www/simplesaml
+
+# 5. Configure PHP-FPM to listen on all interfaces (required for Kubernetes networking)
+USER root
+RUN if [ -f /opt/php-8.5/etc/php-fpm.d/www.conf ]; then \
+      sed -i 's/^listen = .*/listen = [::]:9000/' /opt/php-8.5/etc/php-fpm.d/www.conf; \
+    elif [ -f /opt/php-8.5/etc/php-fpm.conf ]; then \
+      sed -i 's/^listen = .*/listen = [::]:9000/' /opt/php-8.5/etc/php-fpm.conf; \
+    fi
 
 # Port PHP-FPM
 EXPOSE 9000
