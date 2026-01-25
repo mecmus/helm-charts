@@ -8,6 +8,7 @@ RUN apt-get update && apt-get install -y \
     curl tar git unzip \
     libpq-dev libpng-dev libjpeg-dev libfreetype6-dev \
     libicu-dev libzip-dev libonig-dev libxml2-dev libpcre2-dev \
+    libsqlite3-dev \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Compilation des extensions PHP requises par FileSender
