@@ -36,9 +36,12 @@ spec:
                 secretKeyRef:
                   name: {{ include "filesender.fullname" . }}-postgresql
                   key: postgresql-password
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
           volumeMounts:
             - name: data
               mountPath: /var/lib/postgresql/data
+              subPath: pgdata
           livenessProbe:
             exec:
               command:
