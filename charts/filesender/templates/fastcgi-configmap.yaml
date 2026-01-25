@@ -7,7 +7,7 @@ metadata:
   labels:
     {{- include "filesender.labels" . | nindent 4 }}
 data:
-  SCRIPT_FILENAME: "/var/www/html$fastcgi_script_name"
+  SCRIPT_FILENAME: "/var/www/html/www$fastcgi_script_name"
   QUERY_STRING: "$query_string"
   REQUEST_METHOD: "$request_method"
   CONTENT_TYPE: "$content_type"
@@ -15,7 +15,7 @@ data:
   SCRIPT_NAME: "$fastcgi_script_name"
   REQUEST_URI: "$request_uri"
   DOCUMENT_URI: "$document_uri"
-  DOCUMENT_ROOT: "/var/www/html"
+  DOCUMENT_ROOT: "/var/www/html/www"
   SERVER_PROTOCOL: "$server_protocol"
   REQUEST_SCHEME: "$scheme"
   HTTPS: "$https"
