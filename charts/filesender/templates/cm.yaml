@@ -15,7 +15,7 @@ data:
     $config['db_database'] = '{{ .Values.config.db.name }}';
     {{- else }}
     $config['db_host'] = '{{ .Values.config.db.host }}';
-    $config['db_port'] = {{ .Values.config.db.port }};
+    $config['db_port'] = {{ .Values.config.db.port | default 5432 }};
     $config['db_database'] = '{{ .Values.config.db.name }}';
     $config['db_username'] = '{{ .Values.config.db.user }}';
     $config['db_password'] = '{{ .Values.config.db.password }}';
