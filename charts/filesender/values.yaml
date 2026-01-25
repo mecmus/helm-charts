@@ -96,11 +96,15 @@ config:
 ingress:
   enabled: false
   className: ""
+  # FastCGI configuration for nginx-ingress
+  fastcgi:
+    enabled: false  # Set to true to create FastCGI params ConfigMap and enable FCGI backend
   annotations:
     # Recommended annotations for nginx-ingress with FastCGI/PHP-FPM
+    # Uncomment these and set ingress.fastcgi.enabled=true for FastCGI mode:
     # nginx.ingress.kubernetes.io/backend-protocol: "FCGI"
     # nginx.ingress.kubernetes.io/fastcgi-index: "index.php"
-    # nginx.ingress.kubernetes.io/fastcgi-params-configmap: "filesender-fastcgi-params"
+    # nginx.ingress.kubernetes.io/fastcgi-params-configmap: "$(POD_NAMESPACE)/filesender-fastcgi-params"
     nginx.ingress.kubernetes.io/proxy-body-size: "0"
     nginx.ingress.kubernetes.io/proxy-read-timeout: "600"
     nginx.ingress.kubernetes.io/proxy-send-timeout: "600"
