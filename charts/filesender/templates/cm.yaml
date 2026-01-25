@@ -15,9 +15,17 @@ data:
     
     // Database configuration
     $config['db_type'] = '{{ .Values.config.db.type }}';
-    {{- if eq .Values.config.db.type "sqlite" }}
+    {{- if and .Values.postgresql.enabled (eq .Values.config.db.type "pgsql") }}
+    // Using built-in PostgreSQL
+    $config['db_host'] = '{{ include "filesender.fullname" . }}-postgresql';
+    $config['db_port'] = 5432;
+    $config['db_database'] = '{{ .Values.postgresql.database }}';
+    $config['db_username'] = '{{ .Values.postgresql.username }}';
+    $config['db_password'] = '{{ .Values.postgresql.password }}';
+    {{- else if eq .Values.config.db.type "sqlite" }}
     $config['db_database'] = '{{ .Values.config.db.name }}';
     {{- else }}
+    // Using external database
     $config['db_host'] = '{{ .Values.config.db.host }}';
     $config['db_port'] = {{ .Values.config.db.port | default 5432 }};
     $config['db_database'] = '{{ .Values.config.db.name }}';

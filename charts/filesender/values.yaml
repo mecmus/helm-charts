@@ -76,12 +76,12 @@ config:
   
   # Database configuration
   db:
-    type: "sqlite" # sqlite, pgsql or mysql - SQLite is recommended for beta testing
-    host: ""  # Not used for SQLite
-    port: ""  # Not used for SQLite
-    name: "/var/www/html/files/filesender.db"  # SQLite database path (inside persistence volume)
-    user: ""  # Not used for SQLite
-    password: ""  # Not used for SQLite
+    type: "pgsql" # pgsql or mysql (SQLite not supported in FileSender v3)
+    host: ""  # Leave empty to use built-in PostgreSQL, or specify external host
+    port: 5432
+    name: "filesender"
+    user: "filesender"
+    password: "filesender"
 
   # SSO configuration (Azure AD / SAML)
   sso:
@@ -91,6 +91,30 @@ config:
     idp_entity_id: "https://sts.windows.net/TENANT-ID/"
     idp_sso_service_url: "https://login.microsoftonline.com/TENANT-ID/saml2"
     idp_certificate: ""
+
+# PostgreSQL database (included in chart)
+postgresql:
+  enabled: true
+  image:
+    repository: postgres
+    tag: "16-alpine"
+    pullPolicy: IfNotPresent
+  database: "filesender"
+  username: "filesender"
+  password: "filesender"  # Change this in production!
+  persistence:
+    enabled: true
+    size: 5Gi
+    accessModes:
+      - ReadWriteOnce
+    storageClass: ""
+  resources: {}
+    # limits:
+    #   cpu: 500m
+    #   memory: 512Mi
+    # requests:
+    #   cpu: 100m
+    #   memory: 128Mi
 
 # This block is for setting up the ingress for more information can be found here: https://kubernetes.io/docs/concepts/services-networking/ingress/
 ingress:
