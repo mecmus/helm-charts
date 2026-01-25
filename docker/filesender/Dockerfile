@@ -37,9 +37,12 @@ RUN for ext in pdo_mysql pdo_pgsql pdo_sqlite gd zip soap bcmath exif; do \
        echo "extension=${ext}.so" > /build/php-conf/${ext}.ini; \
     done
 
-# Create PHP-FPM pool config to listen on all interfaces (required for Kubernetes networking)
+# Create PHP-FPM config: listen on all interfaces and run in foreground (required for Docker/Kubernetes)
 RUN mkdir -p /build/php-fpm.d && \
-    echo '[www]' > /build/php-fpm.d/zz-docker.conf && \
+    echo '[global]' > /build/php-fpm.d/zz-docker.conf && \
+    echo 'daemonize = no' >> /build/php-fpm.d/zz-docker.conf && \
+    echo '' >> /build/php-fpm.d/zz-docker.conf && \
+    echo '[www]' >> /build/php-fpm.d/zz-docker.conf && \
     echo 'listen = [::]:9000' >> /build/php-fpm.d/zz-docker.conf
 
 # Préparation de l'application
