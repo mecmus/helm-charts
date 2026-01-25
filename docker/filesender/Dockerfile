@@ -36,6 +36,11 @@ RUN for ext in pdo_mysql pdo_pgsql pdo_sqlite gd zip soap bcmath exif; do \
        echo "extension=${ext}.so" > /build/php-conf/${ext}.ini; \
     done
 
+# Create PHP-FPM pool config to listen on all interfaces (required for Kubernetes networking)
+RUN mkdir -p /build/php-fpm.d && \
+    echo '[www]' > /build/php-fpm.d/zz-docker.conf && \
+    echo 'listen = [::]:9000' >> /build/php-fpm.d/zz-docker.conf
+
 # Préparation de l'application
 ARG FILESENDER_VERSION=3.3
 ARG SIMPLESAMLPHP_VERSION=2.2.3
@@ -70,13 +75,8 @@ COPY --from=builder /build/php-conf/ /opt/php-8.5/etc/php/conf.d/
 COPY --from=builder --chown=1000:1000 /build/app/filesender /var/www/html
 COPY --from=builder --chown=1000:1000 /build/app/simplesaml /var/www/simplesaml
 
-# 5. Configure PHP-FPM to listen on all interfaces (required for Kubernetes networking)
-USER root
-RUN if [ -f /opt/php-8.5/etc/php-fpm.d/www.conf ]; then \
-      sed -i 's/^listen = .*/listen = [::]:9000/' /opt/php-8.5/etc/php-fpm.d/www.conf; \
-    elif [ -f /opt/php-8.5/etc/php-fpm.conf ]; then \
-      sed -i 's/^listen = .*/listen = [::]:9000/' /opt/php-8.5/etc/php-fpm.conf; \
-    fi
+# 5. Copy PHP-FPM config to listen on all interfaces (required for Kubernetes networking)
+COPY --from=builder /build/php-fpm.d/zz-docker.conf /opt/php-8.5/etc/php-fpm.d/zz-docker.conf
 
 # Port PHP-FPM
 EXPOSE 9000
