@@ -7,9 +7,13 @@ metadata:
 data:
   config.php: |
     <?php
+    // Site configuration
     $config['site_url'] = '{{ .Values.config.site_url }}';
+    $config['admin'] = array('{{ .Values.config.admin_email }}');
     $config['admin_email'] = '{{ .Values.config.admin_email }}';
+    $config['email_reply_to'] = '{{ .Values.config.admin_email }}';
     
+    // Database configuration
     $config['db_type'] = '{{ .Values.config.db.type }}';
     {{- if eq .Values.config.db.type "sqlite" }}
     $config['db_database'] = '{{ .Values.config.db.name }}';
