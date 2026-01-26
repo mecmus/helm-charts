@@ -1,75 +1,130 @@
-# Stage 1: Builder - Compilation et collecte des dépendances
-FROM dhi.io/php:8.5.0-dev AS builder
+FROM php:8.4-fpm-bookworm
 
-USER root
+LABEL maintainer="FileSender Helm Chart"
+LABEL description="FileSender 3.3 with PHP-FPM and SimpleSAMLphp"
+LABEL version="3.3"
 
-# Installation des dépendances de build
-RUN apt-get update && apt-get install -y \
-    curl tar git unzip \
-    libpq-dev libpng-dev libjpeg-dev libfreetype6-dev \
-    libicu-dev libzip-dev libonig-dev libxml2-dev libpcre2-dev \
-    && apt-get clean && rm -rf /var/lib/apt/lists/*
-
-# Compilation des extensions PHP requises par FileSender
-RUN cd $PHP_SRC_DIR/ext/pdo_mysql && phpize && ./configure && make -j$(nproc) && make install \
-    && cd $PHP_SRC_DIR/ext/pdo_pgsql && phpize && ./configure && make -j$(nproc) && make install \
-    && cd $PHP_SRC_DIR/ext/gd && phpize && ./configure --with-freetype --with-jpeg && make -j$(nproc) && make install \
-    && cd $PHP_SRC_DIR/ext/zip && phpize && ./configure && make -j$(nproc) && make install \
-    && cd $PHP_SRC_DIR/ext/soap && phpize && ./configure && make -j$(nproc) && make install \
-    && cd $PHP_SRC_DIR/ext/bcmath && phpize && ./configure && make -j$(nproc) && make install \
-    && cd $PHP_SRC_DIR/ext/exif && phpize && ./configure && make -j$(nproc) && make install
-
-# Préparation de la structure de collecte
-RUN mkdir -p /build/php-extensions /build/lib /build/php-conf
-
-# Collecte des extensions (.so)
-RUN cp $(php-config --extension-dir)/*.so /build/php-extensions/
-
-# Collecte des bibliothèques système partagées (.so) nécessaires
-RUN for so in /build/php-extensions/*.so; do \
-      ldd "$so" | grep "=> /" | awk '{print $3}' | xargs -I '{}' cp -vL '{}' /build/lib/; \
-    done || true
-
-# Génération des fichiers de configuration .ini
-RUN for ext in pdo_mysql pdo_pgsql gd zip soap bcmath exif; do \
-       echo "extension=${ext}.so" > /build/php-conf/${ext}.ini; \
-    done
-
-# Préparation de l'application
+# FileSender and SimpleSAMLphp versions
 ARG FILESENDER_VERSION=3.3
-ARG SIMPLESAMLPHP_VERSION=2.2.3
-WORKDIR /build/app
-RUN git clone --depth 1 --branch master3 https://github.com/filesender/filesender.git filesender && \
-    curl -L https://github.com/simplesamlphp/simplesamlphp/releases/download/v${SIMPLESAMLPHP_VERSION}/simplesamlphp-${SIMPLESAMLPHP_VERSION}-full.tar.gz | tar xz && \
-    mv simplesamlphp-${SIMPLESAMLPHP_VERSION} simplesaml && \
-    mkdir -p filesender/files filesender/tmp filesender/log && \
-    chown -R 1000:1000 filesender simplesaml
+ARG SSP_VERSION=2.4.2
 
-# Stage 2: Runtime - Image sécurisée Docker Hardened
-FROM dhi.io/php:8.5.0-fpm
+ENV FILESENDER_VERSION=${FILESENDER_VERSION} \
+    SSP_VERSION=${SSP_VERSION} \
+    DEBIAN_FRONTEND=noninteractive
 
-# Information sur la version
-ARG FILESENDER_VERSION=3.3
+# Install required packages
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        curl \
+        wget \
+        git \
+        unzip \
+        libpq-dev \
+        libpng-dev \
+        libjpeg-dev \
+        libfreetype6-dev \
+        libzip-dev \
+        libicu-dev \
+        libxml2-dev \
+        libonig-dev \
+        supervisor \
+    && docker-php-ext-configure gd --with-freetype --with-jpeg \
+    && docker-php-ext-install -j$(nproc) \
+        pdo \
+        pdo_pgsql \
+        pgsql \
+        pdo_mysql \
+        mysqli \
+        gd \
+        zip \
+        intl \
+        xml \
+        mbstring \
+        opcache \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
-# Metadata
-LABEL org.opencontainers.image.source="https://github.com/mecmus/helm-charts" \
-      org.opencontainers.image.description="FileSender v${FILESENDER_VERSION} Hardened Production Image" \
-      org.opencontainers.image.version="${FILESENDER_VERSION}"
+# Install Composer
+COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-# 1. Copie des librairies système vers le chemin standard
-COPY --from=builder /build/lib/ /usr/lib/x86_64-linux-gnu/
+# Create directory structure
+RUN mkdir -p /opt/filesender
 
-# 2. Copie des extensions PHP vers le chemin attendu par PHP 8.5 dans DHI
-COPY --from=builder /build/php-extensions/ /opt/php-8.5/lib/php/extensions/no-debug-non-zts-20250925/
+# Install FileSender
+WORKDIR /opt/filesender
+RUN curl -L https://github.com/filesender/filesender/archive/refs/tags/${FILESENDER_VERSION}.tar.gz | tar xz && \
+    mv filesender-${FILESENDER_VERSION} filesender && \
+    cd filesender && \
+    composer install --no-dev --optimize-autoloader
 
-# 3. Copie de la configuration PHP
-COPY --from=builder /build/php-conf/ /opt/php-8.5/etc/php/conf.d/
+# Install SimpleSAMLphp
+WORKDIR /opt/filesender
+RUN curl -L https://github.com/simplesamlphp/simplesamlphp/releases/download/v${SSP_VERSION}/simplesamlphp-${SSP_VERSION}-full.tar.gz | tar xz && \
+    mv simplesamlphp-${SSP_VERSION} simplesamlphp
 
-# 4. Copie des fichiers applicatifs
-COPY --from=builder --chown=1000:1000 /build/app/filesender /var/www/html
-COPY --from=builder --chown=1000:1000 /build/app/simplesaml /var/www/simplesaml
+# Setup FileSender directories and permissions
+WORKDIR /opt/filesender/filesender
+RUN cp config/config_sample.php config/config.php && \
+    mkdir -p tmp files log && \
+    chmod 755 tmp files log && \
+    chmod 644 config/config.php
 
-# Port PHP-FPM
+# Setup SimpleSAMLphp configuration
+WORKDIR /opt/filesender/simplesamlphp
+RUN cp config/acl.php.dist config/acl.php && \
+    cp config/authsources.php.dist config/authsources.php && \
+    cp config/config.php.dist config/config.php && \
+    cp metadata/saml20-idp-hosted.php.dist metadata/saml20-idp-hosted.php && \
+    cp metadata/saml20-idp-remote.php.dist metadata/saml20-idp-remote.php && \
+    cp metadata/saml20-sp-remote.php.dist metadata/saml20-sp-remote.php
+
+# Create configuration directories for volume mounts
+RUN mkdir -p /config/filesender /config/simplesamlphp/config /config/simplesamlphp/metadata /config/php
+
+# Create www-data user home and set permissions
+RUN chown -R www-data:www-data /opt/filesender && \
+    chmod -R 755 /opt/filesender
+
+# PHP configuration
+RUN { \
+        echo 'log_errors = On'; \
+        echo 'error_log = /proc/self/fd/2'; \
+        echo 'session.cookie_secure = On'; \
+        echo 'session.cookie_httponly = On'; \
+        echo 'session.cookie_samesite = Strict'; \
+        echo 'upload_max_filesize = 2G'; \
+        echo 'post_max_size = 2G'; \
+        echo 'max_execution_time = 300'; \
+        echo 'max_input_time = 300'; \
+        echo 'memory_limit = 512M'; \
+    } > /usr/local/etc/php/conf.d/filesender.ini
+
+# PHP-FPM configuration
+RUN { \
+        echo '[www]'; \
+        echo 'listen = 9000'; \
+        echo 'pm = dynamic'; \
+        echo 'pm.max_children = 50'; \
+        echo 'pm.start_servers = 5'; \
+        echo 'pm.min_spare_servers = 5'; \
+        echo 'pm.max_spare_servers = 35'; \
+        echo 'catch_workers_output = yes'; \
+        echo 'access.log = /proc/self/fd/2'; \
+    } > /usr/local/etc/php-fpm.d/www.conf
+
+# Add healthcheck script
+RUN { \
+        echo '#!/bin/sh'; \
+        echo 'SCRIPT_NAME=/ping SCRIPT_FILENAME=/ping REQUEST_METHOD=GET cgi-fcgi -bind -connect 127.0.0.1:9000 || exit 1'; \
+    } > /usr/local/bin/healthcheck.sh && \
+    chmod +x /usr/local/bin/healthcheck.sh
+
+VOLUME ["/opt/filesender/filesender/files", "/opt/filesender/filesender/log", "/opt/filesender/filesender/tmp"]
+
 EXPOSE 9000
 
-USER 1000
+WORKDIR /opt/filesender/filesender
+
+USER www-data
+
+CMD ["php-fpm"]
