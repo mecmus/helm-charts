@@ -37,7 +37,11 @@ spec:
               service:
                 name: {{ include "filesender.fullname" $ }}
                 port:
+                  {{- if $.Values.nginx.enabled }}
+                  number: 80
+                  {{- else }}
                   number: {{ $.Values.service.port }}
+                  {{- end }}
           {{- end }}
     {{- end }}
 {{- end }}

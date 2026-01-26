@@ -8,11 +8,13 @@ RUN apt-get update && apt-get install -y \
     curl tar git unzip \
     libpq-dev libpng-dev libjpeg-dev libfreetype6-dev \
     libicu-dev libzip-dev libonig-dev libxml2-dev libpcre2-dev \
+    libsqlite3-dev \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Compilation des extensions PHP requises par FileSender
 RUN cd $PHP_SRC_DIR/ext/pdo_mysql && phpize && ./configure && make -j$(nproc) && make install \
     && cd $PHP_SRC_DIR/ext/pdo_pgsql && phpize && ./configure && make -j$(nproc) && make install \
+    && cd $PHP_SRC_DIR/ext/pdo_sqlite && phpize && ./configure && make -j$(nproc) && make install \
     && cd $PHP_SRC_DIR/ext/gd && phpize && ./configure --with-freetype --with-jpeg && make -j$(nproc) && make install \
     && cd $PHP_SRC_DIR/ext/zip && phpize && ./configure && make -j$(nproc) && make install \
     && cd $PHP_SRC_DIR/ext/soap && phpize && ./configure && make -j$(nproc) && make install \
@@ -31,9 +33,17 @@ RUN for so in /build/php-extensions/*.so; do \
     done || true
 
 # Génération des fichiers de configuration .ini
-RUN for ext in pdo_mysql pdo_pgsql gd zip soap bcmath exif; do \
+RUN for ext in pdo_mysql pdo_pgsql pdo_sqlite gd zip soap bcmath exif; do \
        echo "extension=${ext}.so" > /build/php-conf/${ext}.ini; \
     done
+
+# Create PHP-FPM config: listen on all interfaces and run in foreground (required for Docker/Kubernetes)
+RUN mkdir -p /build/php-fpm.d && \
+    echo '[global]' > /build/php-fpm.d/zz-docker.conf && \
+    echo 'daemonize = no' >> /build/php-fpm.d/zz-docker.conf && \
+    echo '' >> /build/php-fpm.d/zz-docker.conf && \
+    echo '[www]' >> /build/php-fpm.d/zz-docker.conf && \
+    echo 'listen = [::]:9000' >> /build/php-fpm.d/zz-docker.conf
 
 # Préparation de l'application
 ARG FILESENDER_VERSION=3.3
@@ -65,9 +75,12 @@ COPY --from=builder /build/php-extensions/ /opt/php-8.5/lib/php/extensions/no-de
 # 3. Copie de la configuration PHP
 COPY --from=builder /build/php-conf/ /opt/php-8.5/etc/php/conf.d/
 
-# 4. Copie des fichiers applicatifs
-COPY --from=builder --chown=1000:1000 /build/app/filesender /var/www/html
-COPY --from=builder --chown=1000:1000 /build/app/simplesaml /var/www/simplesaml
+# 4. Copie des fichiers applicatifs (matching official FileSender documentation paths)
+COPY --from=builder --chown=1000:1000 /build/app/filesender /opt/filesender/filesender
+COPY --from=builder --chown=1000:1000 /build/app/simplesaml /opt/filesender/simplesaml
+
+# 5. Copy PHP-FPM config to listen on all interfaces (required for Kubernetes networking)
+COPY --from=builder /build/php-fpm.d/zz-docker.conf /opt/php-8.5/etc/php-fpm.d/zz-docker.conf
 
 # Port PHP-FPM
 EXPOSE 9000

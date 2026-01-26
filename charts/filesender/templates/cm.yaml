@@ -7,15 +7,31 @@ metadata:
 data:
   config.php: |
     <?php
+    // Site configuration
     $config['site_url'] = '{{ .Values.config.site_url }}';
+    $config['admin'] = array('{{ .Values.config.admin_email }}');
     $config['admin_email'] = '{{ .Values.config.admin_email }}';
+    $config['email_reply_to'] = '{{ .Values.config.admin_email }}';
     
+    // Database configuration
     $config['db_type'] = '{{ .Values.config.db.type }}';
+    {{- if and .Values.postgresql.enabled (eq .Values.config.db.type "pgsql") }}
+    // Using built-in PostgreSQL
+    $config['db_host'] = '{{ include "filesender.fullname" . }}-postgresql';
+    $config['db_port'] = 5432;
+    $config['db_database'] = '{{ .Values.postgresql.database }}';
+    $config['db_username'] = '{{ .Values.postgresql.username }}';
+    $config['db_password'] = '{{ .Values.postgresql.password }}';
+    {{- else if eq .Values.config.db.type "sqlite" }}
+    $config['db_database'] = '{{ .Values.config.db.name }}';
+    {{- else }}
+    // Using external database
     $config['db_host'] = '{{ .Values.config.db.host }}';
-    $config['db_port'] = {{ .Values.config.db.port }};
+    $config['db_port'] = {{ .Values.config.db.port | default 5432 }};
     $config['db_database'] = '{{ .Values.config.db.name }}';
     $config['db_username'] = '{{ .Values.config.db.user }}';
     $config['db_password'] = '{{ .Values.config.db.password }}';
+    {{- end }}
 
     {{- if .Values.config.sso.enabled }}
     $config['authentication'] = 'saml2';
