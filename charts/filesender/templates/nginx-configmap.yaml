@@ -12,7 +12,7 @@ data:
         server_name _;
         
         root /opt/filesender/filesender/www;
-        index index.php;
+        index index.php index.html;
         
         # Security headers
         add_header X-Frame-Options "SAMEORIGIN" always;
@@ -21,16 +21,29 @@ data:
         # Large file upload support
         client_max_body_size 0;
         
-        # Handle root and PHP files
+        # Handle root - redirect to index.php
+        location = / {
+            return 302 /index.php;
+        }
+        
+        # Handle all other requests
         location / {
             try_files $uri $uri/ /index.php$is_args$args;
         }
         
         # PHP handling via FastCGI to PHP-FPM
         location ~ \.php$ {
+            try_files $uri =404;
             fastcgi_pass 127.0.0.1:9000;
             fastcgi_index index.php;
             fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+            fastcgi_param DOCUMENT_ROOT $document_root;
+            fastcgi_param REQUEST_URI $request_uri;
+            fastcgi_param QUERY_STRING $query_string;
+            fastcgi_param REQUEST_METHOD $request_method;
+            fastcgi_param CONTENT_TYPE $content_type;
+            fastcgi_param CONTENT_LENGTH $content_length;
+            fastcgi_param SCRIPT_NAME $fastcgi_script_name;
             include fastcgi_params;
             
             # Timeouts for large file uploads
@@ -46,6 +59,13 @@ data:
         # Deny access to config directory
         location ~ ^/config {
             deny all;
+        }
+        
+        # Health check endpoint
+        location = /health {
+            access_log off;
+            return 200 "OK";
+            add_header Content-Type text/plain;
         }
     }
 {{- end }}
