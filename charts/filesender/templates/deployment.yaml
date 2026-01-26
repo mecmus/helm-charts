@@ -107,8 +107,16 @@ spec:
       {{- if .Values.nginx.enabled }}
       initContainers:
         - name: copy-www
-          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
-          command: ['sh', '-c', 'cp -r /opt/filesender/filesender/www/* /shared/']
+          image: alpine:3.19
+          command:
+            - sh
+            - -c
+            - |
+              apk add --no-cache wget tar
+              echo "Downloading FileSender v3.3 static files..."
+              wget -qO- https://github.com/filesender/filesender/archive/refs/tags/filesender-3.3.tar.gz | tar xz -C /tmp
+              cp -r /tmp/filesender-filesender-3.3/www/* /shared/
+              echo "Static files ready"
           volumeMounts:
             - name: filesender-www
               mountPath: /shared
