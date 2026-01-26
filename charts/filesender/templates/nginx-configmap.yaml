@@ -11,7 +11,7 @@ data:
         listen 80;
         server_name _;
         
-        root /var/www/html/www;
+        root /opt/filesender/filesender/www;
         index index.php;
         
         # Security headers

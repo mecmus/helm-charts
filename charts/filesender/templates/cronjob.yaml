@@ -17,12 +17,12 @@ spec:
             imagePullPolicy: {{ .Values.image.pullPolicy }}
             command:
             - php
-            - /var/www/html/scripts/taskprocessing.php
+            - /opt/filesender/filesender/scripts/taskprocessing.php
             volumeMounts:
             - name: storage
-              mountPath: /var/www/html/files
+              mountPath: /opt/filesender/data/files
             - name: config
-              mountPath: /var/www/html/config/config.php
+              mountPath: /opt/filesender/filesender/config/config.php
               subPath: config.php
           restartPolicy: OnFailure
           volumes:

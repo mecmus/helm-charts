@@ -58,7 +58,7 @@ spec:
               mountPath: /etc/nginx/conf.d/default.conf
               subPath: default.conf
             - name: filesender-www
-              mountPath: /var/www/html/www
+              mountPath: /opt/filesender/filesender/www
               readOnly: true
         {{- end }}
         - name: {{ .Chart.Name }}
@@ -88,18 +88,18 @@ spec:
           {{- end }}
           volumeMounts:
             - name: config
-              mountPath: /var/www/html/config/config.php
+              mountPath: /opt/filesender/filesender/config/config.php
               subPath: config.php
               readOnly: true
             - name: storage
-              mountPath: /var/www/html/files
+              mountPath: /opt/filesender/data/files
             - name: tmp
-              mountPath: /var/www/html/tmp
+              mountPath: /opt/filesender/data/tmp
             - name: log
-              mountPath: /var/www/html/log
+              mountPath: /opt/filesender/data/log
             {{- if .Values.nginx.enabled }}
             - name: filesender-www
-              mountPath: /var/www/html/www-shared
+              mountPath: /opt/filesender/filesender/www-shared
             {{- end }}
           {{- with .Values.volumeMounts }}
             {{- toYaml . | nindent 12 }}
@@ -108,7 +108,7 @@ spec:
       initContainers:
         - name: copy-www
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
-          command: ['sh', '-c', 'cp -r /var/www/html/www/* /shared/']
+          command: ['sh', '-c', 'cp -r /opt/filesender/filesender/www/* /shared/']
           volumeMounts:
             - name: filesender-www
               mountPath: /shared

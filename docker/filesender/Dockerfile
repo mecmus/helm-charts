@@ -75,9 +75,9 @@ COPY --from=builder /build/php-extensions/ /opt/php-8.5/lib/php/extensions/no-de
 # 3. Copie de la configuration PHP
 COPY --from=builder /build/php-conf/ /opt/php-8.5/etc/php/conf.d/
 
-# 4. Copie des fichiers applicatifs
-COPY --from=builder --chown=1000:1000 /build/app/filesender /var/www/html
-COPY --from=builder --chown=1000:1000 /build/app/simplesaml /var/www/simplesaml
+# 4. Copie des fichiers applicatifs (matching official FileSender documentation paths)
+COPY --from=builder --chown=1000:1000 /build/app/filesender /opt/filesender/filesender
+COPY --from=builder --chown=1000:1000 /build/app/simplesaml /opt/filesender/simplesaml
 
 # 5. Copy PHP-FPM config to listen on all interfaces (required for Kubernetes networking)
 COPY --from=builder /build/php-fpm.d/zz-docker.conf /opt/php-8.5/etc/php-fpm.d/zz-docker.conf
