@@ -116,7 +116,10 @@ spec:
               echo "Downloading FileSender v3.3 static files..."
               wget -qO- https://github.com/filesender/filesender/archive/refs/tags/filesender-3.3.tar.gz | tar xz -C /tmp
               cp -r /tmp/filesender-filesender-3.3/www/* /shared/
-              echo "Static files ready"
+              # Fix permissions - nginx runs as uid 101 (nginx user)
+              chmod -R 755 /shared
+              chown -R 101:101 /shared
+              echo "Static files ready with proper permissions"
           volumeMounts:
             - name: filesender-www
               mountPath: /shared
