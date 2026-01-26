@@ -12,7 +12,7 @@ data:
         server_name _;
         
         root /opt/filesender/filesender/www;
-        index index.php index.html;
+        index index.php;
         
         # Security headers
         add_header X-Frame-Options "SAMEORIGIN" always;
@@ -21,19 +21,30 @@ data:
         # Large file upload support
         client_max_body_size 0;
         
-        # Handle root - redirect to index.php
-        location = / {
-            return 302 /index.php;
+        # Health check endpoint (first for priority)
+        location = /health {
+            access_log off;
+            return 200 "OK";
+            add_header Content-Type text/plain;
         }
         
-        # Handle all other requests
+        # Handle root - internal rewrite (not redirect) to index.php
+        location = / {
+            rewrite ^ /index.php last;
+        }
+        
+        # Static files - try to serve directly, fall back to PHP
         location / {
-            try_files $uri $uri/ /index.php$is_args$args;
+            try_files $uri $uri/ @php;
+        }
+        
+        # Named location for PHP fallback
+        location @php {
+            rewrite ^ /index.php last;
         }
         
         # PHP handling via FastCGI to PHP-FPM
         location ~ \.php$ {
-            try_files $uri =404;
             fastcgi_pass 127.0.0.1:9000;
             fastcgi_index index.php;
             fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
@@ -44,11 +55,16 @@ data:
             fastcgi_param CONTENT_TYPE $content_type;
             fastcgi_param CONTENT_LENGTH $content_length;
             fastcgi_param SCRIPT_NAME $fastcgi_script_name;
+            fastcgi_param SERVER_NAME $server_name;
+            fastcgi_param SERVER_PORT $server_port;
+            fastcgi_param SERVER_PROTOCOL $server_protocol;
+            fastcgi_param HTTPS $https if_not_empty;
             include fastcgi_params;
             
             # Timeouts for large file uploads
             fastcgi_read_timeout 600;
             fastcgi_send_timeout 600;
+            fastcgi_buffering off;
         }
         
         # Deny access to hidden files
@@ -59,13 +75,6 @@ data:
         # Deny access to config directory
         location ~ ^/config {
             deny all;
-        }
-        
-        # Health check endpoint
-        location = /health {
-            access_log off;
-            return 200 "OK";
-            add_header Content-Type text/plain;
         }
     }
 {{- end }}

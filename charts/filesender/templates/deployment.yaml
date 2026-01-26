@@ -97,11 +97,8 @@ spec:
               mountPath: /opt/filesender/data/tmp
             - name: log
               mountPath: /opt/filesender/data/log
-            {{- if .Values.nginx.enabled }}
-            # Share the same www directory with nginx for static files
-            - name: filesender-www
-              mountPath: /opt/filesender/filesender/www
-            {{- end }}
+            # Note: PHP-FPM uses the full FileSender app from the Docker image
+            # nginx uses downloaded static files from init container
           {{- with .Values.volumeMounts }}
             {{- toYaml . | nindent 12 }}
           {{- end }}
