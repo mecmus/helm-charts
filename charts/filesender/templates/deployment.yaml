@@ -113,10 +113,12 @@ spec:
             - sh
             - -c
             - |
+              set -e
               apk add --no-cache wget tar
               echo "Downloading FileSender v3.3 static files..."
-              wget -qO- https://github.com/filesender/filesender/archive/refs/tags/filesender-3.3.tar.gz | tar xz -C /tmp
-              cp -r /tmp/filesender-filesender-3.3/www/* /shared/
+              wget -O /tmp/filesender.tar.gz https://github.com/filesender/filesender/archive/refs/tags/3.3.tar.gz
+              tar xzf /tmp/filesender.tar.gz -C /tmp
+              cp -r /tmp/filesender-3.3/www/* /shared/
               # Fix permissions - nginx runs as uid 101 (nginx user)
               chmod -R 755 /shared
               chown -R 101:101 /shared
