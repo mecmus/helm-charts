@@ -98,8 +98,9 @@ spec:
             - name: log
               mountPath: /opt/filesender/data/log
             {{- if .Values.nginx.enabled }}
+            # Share the same www directory with nginx for static files
             - name: filesender-www
-              mountPath: /opt/filesender/filesender/www-shared
+              mountPath: /opt/filesender/filesender/www
             {{- end }}
           {{- with .Values.volumeMounts }}
             {{- toYaml . | nindent 12 }}
