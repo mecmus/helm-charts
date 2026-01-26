@@ -7,9 +7,16 @@ metadata:
 spec:
   type: {{ .Values.service.type }}
   ports:
-    - port: {{ .Values.service.port }}
+    {{- if .Values.nginx.enabled }}
+    - port: 80
       targetPort: http
       protocol: TCP
       name: http
+    {{- else }}
+    - port: {{ .Values.service.port }}
+      targetPort: phpfpm
+      protocol: TCP
+      name: phpfpm
+    {{- end }}
   selector:
     {{- include "filesender.selectorLabels" . | nindent 4 }}

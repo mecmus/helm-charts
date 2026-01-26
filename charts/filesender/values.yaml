@@ -13,6 +13,14 @@ image:
   # Overrides the image tag whose default is the chart appVersion.
   tag: "3.3-php8.5.0"
 
+# Nginx sidecar for serving static files and routing
+nginx:
+  enabled: true
+  image:
+    repository: nginx
+    tag: "1.25-alpine"
+    pullPolicy: IfNotPresent
+
 # This is for the secrets for pulling an image from a private repository more information can be found here: https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/
 imagePullSecrets: []
 # This is to override the chart name.
@@ -120,18 +128,18 @@ postgresql:
 ingress:
   enabled: false
   className: ""
-  # FastCGI configuration for nginx-ingress
+  # FastCGI configuration (only used when nginx.enabled=false)
   fastcgi:
-    enabled: false  # Set to true to create FastCGI params ConfigMap and enable FCGI backend
+    enabled: false  # Set to true to create FastCGI params ConfigMap for direct PHP-FPM access
   annotations:
-    # Recommended annotations for nginx-ingress with FastCGI/PHP-FPM
-    # Uncomment these and set ingress.fastcgi.enabled=true for FastCGI mode:
-    # nginx.ingress.kubernetes.io/backend-protocol: "FCGI"
-    # nginx.ingress.kubernetes.io/fastcgi-index: "index.php"
-    # nginx.ingress.kubernetes.io/fastcgi-params-configmap: "$(POD_NAMESPACE)/filesender-fastcgi-params"
+    # When using nginx sidecar (nginx.enabled=true), only these annotations are needed:
     nginx.ingress.kubernetes.io/proxy-body-size: "0"
     nginx.ingress.kubernetes.io/proxy-read-timeout: "600"
     nginx.ingress.kubernetes.io/proxy-send-timeout: "600"
+    # For direct PHP-FPM access (nginx.enabled=false), add these:
+    # nginx.ingress.kubernetes.io/backend-protocol: "FCGI"
+    # nginx.ingress.kubernetes.io/fastcgi-index: "index.php"
+    # nginx.ingress.kubernetes.io/fastcgi-params-configmap: "$(POD_NAMESPACE)/filesender-fastcgi-params"
   hosts:
     - host: chart-example.local
       paths:
