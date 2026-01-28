@@ -140,12 +140,18 @@ ingress:
         - filesender.example.com
 ```
 
-**Important pour HTTPS :** Le chart est configuré pour détecter automatiquement les connexions HTTPS via les headers `X-Forwarded-Proto` envoyés par l'ingress controller. Assurez-vous que :
-- Votre `filesender.siteUrl` est configuré avec `https://`
-- Votre ingress controller passe les headers `X-Forwarded-Proto`, `X-Forwarded-For` et `X-Forwarded-Host`
-- La configuration Nginx dans l'image détecte automatiquement HTTPS via ces headers
+**Important pour HTTPS :** Le chart est configuré pour détecter automatiquement les connexions HTTPS via les headers `X-Forwarded-Proto` envoyés par l'ingress controller. La configuration Nginx :
+- Détecte automatiquement HTTPS via les headers `X-Forwarded-*`
+- Configure `HTTPS=on` quand `X-Forwarded-Proto: https`
+- Ajuste `SERVER_NAME` à partir de `X-Forwarded-Host`
+- Définit `SERVER_PORT` à 443 pour HTTPS
+- Configure `REQUEST_SCHEME` correctement
 
-Cela évite les boucles de redirection infinies quand l'ingress termine SSL et transfère en HTTP au pod.
+Assurez-vous que :
+- Votre `filesender.siteUrl` est configuré avec `https://`
+- Votre ingress controller passe les headers `X-Forwarded-Proto`, `X-Forwarded-For` et `X-Forwarded-Host` (nginx-ingress le fait par défaut)
+
+Cela évite les boucles de redirection infinies et garantit la génération correcte des URLs (boutons, liens, etc.).
 
 ### Stockage des fichiers
 
@@ -417,9 +423,9 @@ kubectl logs -l app.kubernetes.io/name=filesender | grep simplesaml
 
 Si vous rencontrez des erreurs "too many redirects" quand vous accédez à FileSender via HTTPS :
 
-**Cause :** L'ingress termine SSL et transfère en HTTP au pod, mais FileSender ne détecte pas qu'il est derrière un proxy HTTPS.
+**Cause :** L'ingress termine SSL et transfère en HTTP au pod, mais FileSender ne détecte pas qu'il est derrière un proxy HTTPS ou les variables serveur ne sont pas correctement définies.
 
-**Solution :** Le chart gère automatiquement cela via les headers `X-Forwarded-Proto`. Vérifiez que :
+**Solution :** Le chart gère automatiquement cela via les headers `X-Forwarded-*`. Vérifiez que :
 
 1. Votre `filesender.siteUrl` utilise `https://` :
    ```yaml
@@ -434,7 +440,17 @@ Si vous rencontrez des erreurs "too many redirects" quand vous accédez à FileS
    kubectl logs -l app.kubernetes.io/name=filesender | grep X-Forwarded-Proto
    ```
 
-4. Si le problème persiste, vérifiez que l'image Docker utilisée est à jour avec la configuration Nginx qui gère `X-Forwarded-Proto`
+4. Si le problème persiste, vérifiez que l'image Docker utilisée est à jour avec la configuration Nginx qui :
+   - Définit `HTTPS=on` quand `X-Forwarded-Proto: https`
+   - Configure `SERVER_NAME` depuis `X-Forwarded-Host`
+   - Définit `SERVER_PORT` à 443 pour HTTPS
+   - Configure `REQUEST_SCHEME` correctement
+
+### URLs malformées ou boutons qui ne fonctionnent pas
+
+Si les liens ou boutons génèrent des URLs malformées (exemple: `#logon-https%3A%2F%2F...`), cela indique que PHP ne reçoit pas les bonnes variables serveur.
+
+**Solution :** Rebuild l'image Docker avec la dernière version de `default.conf` qui configure correctement `SERVER_NAME`, `SERVER_PORT` et `REQUEST_SCHEME` pour les requêtes HTTPS derrière un proxy.
 
 ### Vérifier la configuration
 
