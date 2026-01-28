@@ -149,18 +149,22 @@ cleanup:
 livenessProbe:
   enabled: true
   httpGet:
-    path: /index.php
+    path: /health
     port: 80
+    scheme: HTTP
   initialDelaySeconds: 30
   periodSeconds: 10
+  timeoutSeconds: 3
   
 readinessProbe:
   enabled: true
   httpGet:
-    path: /index.php
+    path: /health
     port: 80
+    scheme: HTTP
   initialDelaySeconds: 10
   periodSeconds: 5
+  timeoutSeconds: 3
 
 nodeSelector: {}
 tolerations: []
