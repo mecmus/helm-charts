@@ -1,13 +1,13 @@
 {{- if .Values.persistence.enabled -}}
-kind: PersistentVolumeClaim
 apiVersion: v1
+kind: PersistentVolumeClaim
 metadata:
-  name: {{ include "filesender.fullname" . }}-storage
+  name: {{ include "filesender.fullname" . }}-data
   labels:
     {{- include "filesender.labels" . | nindent 4 }}
 spec:
   accessModes:
-    {{- toYaml .Values.persistence.accessModes | nindent 4 }}
+    - {{ .Values.persistence.accessMode }}
   resources:
     requests:
       storage: {{ .Values.persistence.size | quote }}

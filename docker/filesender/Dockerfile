@@ -1,75 +1,111 @@
-# Stage 1: Builder - Compilation et collecte des dépendances
-FROM dhi.io/php:8.5.0-dev AS builder
+# Multi-stage Dockerfile pour FileSender v3.3 avec Nginx intégré
+# Base: php:8.2-fpm-alpine
 
-USER root
+FROM php:8.2-fpm-alpine AS builder
 
-# Installation des dépendances de build
-RUN apt-get update && apt-get install -y \
-    curl tar git unzip \
-    libpq-dev libpng-dev libjpeg-dev libfreetype6-dev \
-    libicu-dev libzip-dev libonig-dev libxml2-dev libpcre2-dev \
-    && apt-get clean && rm -rf /var/lib/apt/lists/*
-
-# Compilation des extensions PHP requises par FileSender
-RUN cd $PHP_SRC_DIR/ext/pdo_mysql && phpize && ./configure && make -j$(nproc) && make install \
-    && cd $PHP_SRC_DIR/ext/pdo_pgsql && phpize && ./configure && make -j$(nproc) && make install \
-    && cd $PHP_SRC_DIR/ext/gd && phpize && ./configure --with-freetype --with-jpeg && make -j$(nproc) && make install \
-    && cd $PHP_SRC_DIR/ext/zip && phpize && ./configure && make -j$(nproc) && make install \
-    && cd $PHP_SRC_DIR/ext/soap && phpize && ./configure && make -j$(nproc) && make install \
-    && cd $PHP_SRC_DIR/ext/bcmath && phpize && ./configure && make -j$(nproc) && make install \
-    && cd $PHP_SRC_DIR/ext/exif && phpize && ./configure && make -j$(nproc) && make install
-
-# Préparation de la structure de collecte
-RUN mkdir -p /build/php-extensions /build/lib /build/php-conf
-
-# Collecte des extensions (.so)
-RUN cp $(php-config --extension-dir)/*.so /build/php-extensions/
-
-# Collecte des bibliothèques système partagées (.so) nécessaires
-RUN for so in /build/php-extensions/*.so; do \
-      ldd "$so" | grep "=> /" | awk '{print $3}' | xargs -I '{}' cp -vL '{}' /build/lib/; \
-    done || true
-
-# Génération des fichiers de configuration .ini
-RUN for ext in pdo_mysql pdo_pgsql gd zip soap bcmath exif; do \
-       echo "extension=${ext}.so" > /build/php-conf/${ext}.ini; \
-    done
-
-# Préparation de l'application
+# Arguments de build
 ARG FILESENDER_VERSION=3.3
 ARG SIMPLESAMLPHP_VERSION=2.2.3
-WORKDIR /build/app
-RUN git clone --depth 1 --branch master3 https://github.com/filesender/filesender.git filesender && \
-    curl -L https://github.com/simplesamlphp/simplesamlphp/releases/download/v${SIMPLESAMLPHP_VERSION}/simplesamlphp-${SIMPLESAMLPHP_VERSION}-full.tar.gz | tar xz && \
-    mv simplesamlphp-${SIMPLESAMLPHP_VERSION} simplesaml && \
-    mkdir -p filesender/files filesender/tmp filesender/log && \
-    chown -R 1000:1000 filesender simplesaml
 
-# Stage 2: Runtime - Image sécurisée Docker Hardened
-FROM dhi.io/php:8.5.0-fpm
+# Installation des dépendances de build
+RUN apk add --no-cache --virtual .build-deps \
+    postgresql-dev \
+    libpng-dev \
+    libjpeg-turbo-dev \
+    freetype-dev \
+    icu-dev \
+    libxml2-dev \
+    oniguruma-dev \
+    git \
+    curl \
+    tar
 
-# Information sur la version
-ARG FILESENDER_VERSION=3.3
+# Installation des extensions PHP requises
+RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
+    && docker-php-ext-install -j$(nproc) \
+        pdo_pgsql \
+        pgsql \
+        mbstring \
+        xml \
+        intl \
+        gd
+
+# Téléchargement de FileSender depuis master3
+WORKDIR /build
+RUN git clone --depth 1 --branch master3 https://github.com/filesender/filesender.git filesender
+
+# Téléchargement de SimpleSAMLphp
+RUN curl -L https://github.com/simplesamlphp/simplesamlphp/releases/download/v${SIMPLESAMLPHP_VERSION}/simplesamlphp-${SIMPLESAMLPHP_VERSION}-full.tar.gz | tar xz \
+    && mv simplesamlphp-${SIMPLESAMLPHP_VERSION} simplesaml
+
+# Image finale
+FROM php:8.2-fpm-alpine
 
 # Metadata
+ARG FILESENDER_VERSION=3.3
 LABEL org.opencontainers.image.source="https://github.com/mecmus/helm-charts" \
-      org.opencontainers.image.description="FileSender v${FILESENDER_VERSION} Hardened Production Image" \
+      org.opencontainers.image.description="FileSender v${FILESENDER_VERSION} avec Nginx intégré" \
       org.opencontainers.image.version="${FILESENDER_VERSION}"
 
-# 1. Copie des librairies système vers le chemin standard
-COPY --from=builder /build/lib/ /usr/lib/x86_64-linux-gnu/
+# Installation des dépendances runtime et Nginx
+RUN apk add --no-cache \
+    postgresql-libs \
+    libpng \
+    libjpeg-turbo \
+    freetype \
+    icu-libs \
+    libxml2 \
+    oniguruma \
+    nginx \
+    supervisor \
+    && docker-php-ext-configure gd --with-freetype --with-jpeg \
+    && docker-php-ext-install -j$(nproc) \
+        pdo_pgsql \
+        pgsql \
+        mbstring \
+        xml \
+        intl \
+        gd
 
-# 2. Copie des extensions PHP vers le chemin attendu par PHP 8.5 dans DHI
-COPY --from=builder /build/php-extensions/ /opt/php-8.5/lib/php/extensions/no-debug-non-zts-20250925/
+# Création de la structure des répertoires
+RUN mkdir -p \
+    /opt/filesender/filesender \
+    /opt/filesender/simplesaml \
+    /var/www/files \
+    /var/www/tmp \
+    /var/www/log \
+    /run/nginx \
+    /var/log/nginx \
+    && chown -R www-data:www-data \
+        /opt/filesender \
+        /var/www/files \
+        /var/www/tmp \
+        /var/www/log \
+        /run/nginx \
+        /var/log/nginx
 
-# 3. Copie de la configuration PHP
-COPY --from=builder /build/php-conf/ /opt/php-8.5/etc/php/conf.d/
+# Copie de FileSender et SimpleSAMLphp depuis le builder
+COPY --from=builder --chown=www-data:www-data /build/filesender /opt/filesender/filesender
+COPY --from=builder --chown=www-data:www-data /build/simplesaml /opt/filesender/simplesaml
 
-# 4. Copie des fichiers applicatifs
-COPY --from=builder --chown=1000:1000 /build/app/filesender /var/www/html
-COPY --from=builder --chown=1000:1000 /build/app/simplesaml /var/www/simplesaml
+# Configuration PHP-FPM
+RUN sed -i 's/listen = 127.0.0.1:9000/listen = 127.0.0.1:9000/' /usr/local/etc/php-fpm.d/www.conf \
+    && echo "php_admin_value[error_log] = /var/www/log/php-fpm.log" >> /usr/local/etc/php-fpm.d/www.conf \
+    && echo "php_admin_flag[log_errors] = on" >> /usr/local/etc/php-fpm.d/www.conf
 
-# Port PHP-FPM
-EXPOSE 9000
+# Configuration Nginx (sera remplacée par ConfigMap en production)
+COPY nginx.conf /etc/nginx/nginx.conf
+COPY default.conf /etc/nginx/http.d/default.conf
 
-USER 1000
+# Configuration Supervisor pour gérer PHP-FPM et Nginx
+COPY supervisord.conf /etc/supervisord.conf
+
+# Exposition des ports
+EXPOSE 80
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
+    CMD wget --quiet --tries=1 --spider http://localhost/index.php || exit 1
+
+# Démarrage via Supervisor
+CMD ["/usr/bin/supervisord", "-c", "/etc/supervisord.conf"]
