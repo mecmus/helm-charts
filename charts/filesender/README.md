@@ -140,6 +140,13 @@ ingress:
         - filesender.example.com
 ```
 
+**Important pour HTTPS :** Le chart est configuré pour détecter automatiquement les connexions HTTPS via les headers `X-Forwarded-Proto` envoyés par l'ingress controller. Assurez-vous que :
+- Votre `filesender.siteUrl` est configuré avec `https://`
+- Votre ingress controller passe les headers `X-Forwarded-Proto`, `X-Forwarded-For` et `X-Forwarded-Host`
+- La configuration Nginx dans l'image détecte automatiquement HTTPS via ces headers
+
+Cela évite les boucles de redirection infinies quand l'ingress termine SSL et transfère en HTTP au pod.
+
 ### Stockage des fichiers
 
 ```yaml
@@ -405,6 +412,29 @@ kubectl logs -l app.kubernetes.io/component=database
 # Vérifier les logs SimpleSAMLphp dans les logs du pod
 kubectl logs -l app.kubernetes.io/name=filesender | grep simplesaml
 ```
+
+### Boucles de redirection HTTPS (Too many redirects)
+
+Si vous rencontrez des erreurs "too many redirects" quand vous accédez à FileSender via HTTPS :
+
+**Cause :** L'ingress termine SSL et transfère en HTTP au pod, mais FileSender ne détecte pas qu'il est derrière un proxy HTTPS.
+
+**Solution :** Le chart gère automatiquement cela via les headers `X-Forwarded-Proto`. Vérifiez que :
+
+1. Votre `filesender.siteUrl` utilise `https://` :
+   ```yaml
+   filesender:
+     siteUrl: "https://filesender.example.com"
+   ```
+
+2. Votre ingress controller passe les headers nécessaires (nginx-ingress le fait par défaut)
+
+3. Les logs Nginx montrent les headers reçus :
+   ```bash
+   kubectl logs -l app.kubernetes.io/name=filesender | grep X-Forwarded-Proto
+   ```
+
+4. Si le problème persiste, vérifiez que l'image Docker utilisée est à jour avec la configuration Nginx qui gère `X-Forwarded-Proto`
 
 ### Vérifier la configuration
 

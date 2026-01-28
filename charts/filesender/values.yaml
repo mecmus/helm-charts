@@ -121,6 +121,11 @@ ingress:
   enabled: true
   className: ""
   annotations: {}
+    # For nginx-ingress controller, these annotations help with HTTPS:
+    # nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    # nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    # For cert-manager with Let's Encrypt:
+    # cert-manager.io/cluster-issuer: "letsencrypt-prod"
   hosts:
     - host: filesender.example.com
       paths:
