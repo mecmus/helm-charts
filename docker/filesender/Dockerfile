@@ -16,6 +16,7 @@ RUN apk add --no-cache --virtual .build-deps \
     icu-dev \
     libxml2-dev \
     oniguruma-dev \
+    zlib-dev \
     git \
     curl \
     tar
@@ -56,8 +57,17 @@ RUN apk add --no-cache \
     icu-libs \
     libxml2 \
     oniguruma \
+    zlib \
     nginx \
     supervisor \
+    zlib-dev \
+    postgresql-dev \
+    libpng-dev \
+    libjpeg-turbo-dev \
+    freetype-dev \
+    icu-dev \
+    libxml2-dev \
+    oniguruma-dev \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install -j$(nproc) \
         pdo_pgsql \
@@ -65,7 +75,9 @@ RUN apk add --no-cache \
         mbstring \
         xml \
         intl \
-        gd
+        gd \
+    && apk del zlib-dev postgresql-dev libpng-dev libjpeg-turbo-dev \
+        freetype-dev icu-dev libxml2-dev oniguruma-dev
 
 # Création de la structure des répertoires
 RUN mkdir -p \
