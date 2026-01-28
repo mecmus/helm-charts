@@ -1,0 +1,58 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "filesender.fullname" . }}-filesender
+  labels:
+    {{- include "filesender.labels" . | nindent 4 }}
+data:
+  config.php: |
+    <?php
+    // FileSender configuration file
+    
+    // Site configuration
+    $config['site_url'] = '{{ .Values.filesender.siteUrl }}';
+    $config['site_name'] = '{{ .Values.filesender.siteName }}';
+    $config['admin'] = '{{ .Values.filesender.admin }}';
+    $config['admin_email'] = '{{ .Values.filesender.adminEmail }}';
+    $config['email_reply_to'] = '{{ .Values.filesender.emailReplyTo }}';
+    $config['default_timezone'] = '{{ .Values.filesender.defaultTimezone }}';
+    
+    // Database configuration
+    {{- if .Values.postgresql.external.enabled }}
+    $config['db_type'] = 'pgsql';
+    $config['db_host'] = '{{ .Values.postgresql.external.host }}';
+    $config['db_port'] = {{ .Values.postgresql.external.port }};
+    $config['db_database'] = '{{ .Values.postgresql.external.database }}';
+    $config['db_username'] = '{{ .Values.postgresql.external.username }}';
+    $config['db_password'] = getenv('POSTGRES_PASSWORD');
+    {{- else if .Values.postgresql.internal.enabled }}
+    $config['db_type'] = 'pgsql';
+    $config['db_host'] = '{{ include "filesender.fullname" . }}-postgresql';
+    $config['db_port'] = 5432;
+    $config['db_database'] = '{{ .Values.postgresql.internal.database }}';
+    $config['db_username'] = '{{ .Values.postgresql.internal.username }}';
+    $config['db_password'] = getenv('POSTGRES_PASSWORD');
+    {{- end }}
+    
+    // Storage configuration
+    $config['storage_type'] = '{{ .Values.filesender.storage.type }}';
+    $config['storage_filesystem_path'] = '{{ .Values.filesender.storage.path }}';
+    
+    // Transfer limits
+    $config['max_transfer_size'] = {{ .Values.filesender.maxTransferSize }};
+    $config['max_transfer_files'] = {{ .Values.filesender.maxTransferFiles }};
+    $config['default_transfer_days_valid'] = {{ .Values.filesender.defaultTransferDaysValid }};
+    $config['max_transfer_days_valid'] = {{ .Values.filesender.maxTransferDaysValid }};
+    
+    // Authentication
+    {{- if eq .Values.simplesamlphp.authType "saml" }}
+    $config['auth_sp_type'] = 'saml';
+    $config['auth_sp_saml_simplesamlphp_url'] = '{{ .Values.filesender.siteUrl }}/simplesaml';
+    $config['auth_sp_saml_simplesamlphp_location'] = '/opt/filesender/simplesaml';
+    $config['auth_sp_saml_authentication_source'] = '{{ .Values.simplesamlphp.authenticationSource }}';
+    $config['auth_sp_saml_uid_attribute'] = '{{ .Values.simplesamlphp.uidAttribute }}';
+    $config['auth_sp_saml_email_attribute'] = '{{ .Values.simplesamlphp.emailAttribute }}';
+    $config['auth_sp_saml_name_attribute'] = '{{ .Values.simplesamlphp.nameAttribute }}';
+    {{- else if eq .Values.simplesamlphp.authType "fake" }}
+    $config['auth_sp_type'] = 'fake';
+    {{- end }}

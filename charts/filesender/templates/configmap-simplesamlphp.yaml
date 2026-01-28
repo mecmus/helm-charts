@@ -1,0 +1,73 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "filesender.fullname" . }}-simplesamlphp
+  labels:
+    {{- include "filesender.labels" . | nindent 4 }}
+data:
+  config.php: |
+    <?php
+    // SimpleSAMLphp configuration
+    
+    $config = [
+        'baseurlpath' => '{{ .Values.filesender.siteUrl }}/simplesaml/',
+        'certdir' => 'cert/',
+        'loggingdir' => 'log/',
+        'datadir' => 'data/',
+        'tempdir' => '/tmp/simplesaml',
+        
+        'technicalcontact_name' => 'Administrator',
+        'technicalcontact_email' => '{{ .Values.filesender.adminEmail }}',
+        
+        'secretsalt' => getenv('SIMPLESAMLPHP_SECRET_SALT'),
+        'auth.adminpassword' => getenv('SIMPLESAMLPHP_ADMIN_PASSWORD'),
+        
+        'admin.protectindexpage' => true,
+        'admin.protectmetadata' => true,
+        
+        'logging.level' => SimpleSAML\Logger::NOTICE,
+        'logging.handler' => 'syslog',
+        
+        'enable.saml20-idp' => false,
+        'enable.shib13-idp' => false,
+        'enable.adfs-idp' => false,
+        'enable.wsfed-sp' => false,
+        'enable.authmemcookie' => false,
+    ];
+  
+  authsources.php: |
+    <?php
+    $config = [
+        'admin' => [
+            'core:AdminPassword',
+        ],
+        
+        {{- if .Values.simplesamlphp.localUsers.enabled }}
+        '{{ .Values.simplesamlphp.authenticationSource }}' => [
+            'exampleauth:UserPass',
+            {{- range .Values.simplesamlphp.localUsers.users }}
+            '{{ .username }}:{{ .password }}' => [
+                'uid' => ['{{ .uid }}'],
+                'eduPersonAffiliation' => ['member', 'employee'],
+                'email' => '{{ .email }}',
+            ],
+            {{- end }}
+        ],
+        {{- else }}
+        '{{ .Values.simplesamlphp.authenticationSource }}' => [
+            'saml:SP',
+            'entityID' => '{{ .Values.filesender.siteUrl }}/simplesaml/module.php/saml/sp/metadata.php/{{ .Values.simplesamlphp.authenticationSource }}',
+            'idp' => '{{ .Values.simplesamlphp.idp.entityId }}',
+        ],
+        {{- end }}
+    ];
+  
+  {{- if and (not .Values.simplesamlphp.localUsers.enabled) .Values.simplesamlphp.idp.entityId }}
+  saml20-idp-remote.php: |
+    <?php
+    $metadata['{{ .Values.simplesamlphp.idp.entityId }}'] = [
+        'SingleSignOnService' => '{{ .Values.simplesamlphp.idp.ssoUrl }}',
+        'SingleLogoutService' => '',
+        'certificate' => '{{ .Values.simplesamlphp.idp.certificate }}',
+    ];
+  {{- end }}
