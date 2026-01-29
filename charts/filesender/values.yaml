@@ -37,20 +37,20 @@ filesender:
 simplesamlphp:
   adminPassword: ""  # Sera généré si vide
   secretSalt: ""     # Sera généré si vide
-  authType: "saml"   # saml, shibboleth, fake
-  authenticationSource: "default-sp"
-  uidAttribute: "eduPersonPrincipalName"
-  emailAttribute: "mail"
+  authType: "fake"   # saml, shibboleth, fake
+  authenticationSource: "example-sp"
+  uidAttribute: "uid"
+  emailAttribute: "email"
   nameAttribute: "cn"
   
   # Pour tests avec utilisateurs locaux
   localUsers:
-    enabled: false
-    users: []
-    # - username: "testuser"
-    #   password: "testpassword"
-    #   email: "test@example.com"
-    #   uid: "testuser"
+    enabled: true
+    users:
+      - username: "testuser"
+        password: ""  # Sera généré si vide
+        email: "test@example.com"
+        uid: "testuser"
   
   # Configuration IdP
   idp:

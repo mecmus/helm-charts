@@ -28,7 +28,23 @@ data:
         'logging.level' => SimpleSAML\Logger::NOTICE,
         'logging.handler' => 'syslog',
         
+        {{- if .Values.simplesamlphp.localUsers.enabled }}
+        // Enable modules for fake/local users mode
+        'module.enable' => [
+            'exampleauth' => true,
+            'core' => true,
+            'admin' => true,
+            'saml' => true,
+        ],
+        'enable.saml20-idp' => true,
+        {{- else }}
+        'module.enable' => [
+            'core' => true,
+            'admin' => true,
+            'saml' => true,
+        ],
         'enable.saml20-idp' => false,
+        {{- end }}
         'enable.shib13-idp' => false,
         'enable.adfs-idp' => false,
         'enable.wsfed-sp' => false,
@@ -43,17 +59,28 @@ data:
         ],
         
         {{- if .Values.simplesamlphp.localUsers.enabled }}
+        // SP configuration for local users mode
         '{{ .Values.simplesamlphp.authenticationSource }}' => [
+            'saml:SP',
+            'entityID' => '{{ .Values.filesender.siteUrl }}/simplesaml/module.php/saml/sp/metadata.php/{{ .Values.simplesamlphp.authenticationSource }}',
+            'idp' => 'urn:x-simplesamlphp:example-idp',
+            'discoURL' => null,
+        ],
+        
+        // Local users for testing
+        'example-userpass' => [
             'exampleauth:UserPass',
             {{- range .Values.simplesamlphp.localUsers.users }}
-            '{{ .username }}:{{ .password }}' => [
+            '{{ .username }}:' . getenv('LOCAL_USER_{{ .username | upper }}_PASSWORD') => [
                 'uid' => ['{{ .uid }}'],
-                'eduPersonAffiliation' => ['member', 'employee'],
-                'email' => '{{ .email }}',
+                'email' => ['{{ .email }}'],
+                'cn' => ['{{ .username }}'],
+                'eduPersonPrincipalName' => ['{{ .uid }}@example.com'],
             ],
             {{- end }}
         ],
         {{- else }}
+        // SP configuration for external IdP
         '{{ .Values.simplesamlphp.authenticationSource }}' => [
             'saml:SP',
             'entityID' => '{{ .Values.filesender.siteUrl }}/simplesaml/module.php/saml/sp/metadata.php/{{ .Values.simplesamlphp.authenticationSource }}',
@@ -61,6 +88,24 @@ data:
         ],
         {{- end }}
     ];
+  
+  {{- if .Values.simplesamlphp.localUsers.enabled }}
+  saml20-idp-hosted.php: |
+    <?php
+    // Hosted IdP metadata for local users mode
+    $metadata['urn:x-simplesamlphp:example-idp'] = [
+        'host' => '__DEFAULT__',
+        'privatekey' => 'server.pem',
+        'certificate' => 'server.crt',
+        'auth' => 'example-userpass',
+        'authproc' => [
+            30 => [
+                'class' => 'core:AttributeMap',
+                'name2oid',
+            ],
+        ],
+    ];
+  {{- end }}
   
   {{- if and (not .Values.simplesamlphp.localUsers.enabled) .Values.simplesamlphp.idp.entityId }}
   saml20-idp-remote.php: |

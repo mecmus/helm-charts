@@ -65,6 +65,17 @@ spec:
                 secretKeyRef:
                   name: {{ include "filesender.fullname" . }}
                   key: simplesamlphp-secret-salt
+            
+            {{- if .Values.simplesamlphp.localUsers.enabled }}
+            # Local user passwords
+            {{- range .Values.simplesamlphp.localUsers.users }}
+            - name: LOCAL_USER_{{ .username | upper }}_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "filesender.fullname" $ }}
+                  key: local-user-{{ .username }}-password
+            {{- end }}
+            {{- end }}
           
           {{- if .Values.livenessProbe.enabled }}
           livenessProbe:
@@ -89,6 +100,11 @@ spec:
             - name: simplesamlphp-authsources
               mountPath: /opt/filesender/simplesaml/config/authsources.php
               subPath: authsources.php
+            {{- if .Values.simplesamlphp.localUsers.enabled }}
+            - name: simplesamlphp-metadata-idp-hosted
+              mountPath: /opt/filesender/simplesaml/metadata/saml20-idp-hosted.php
+              subPath: saml20-idp-hosted.php
+            {{- end }}
             {{- if and (not .Values.simplesamlphp.localUsers.enabled) .Values.simplesamlphp.idp.entityId }}
             - name: simplesamlphp-metadata
               mountPath: /opt/filesender/simplesaml/metadata/saml20-idp-remote.php
@@ -119,6 +135,14 @@ spec:
             items:
               - key: authsources.php
                 path: authsources.php
+        {{- if .Values.simplesamlphp.localUsers.enabled }}
+        - name: simplesamlphp-metadata-idp-hosted
+          configMap:
+            name: {{ include "filesender.fullname" . }}-simplesamlphp
+            items:
+              - key: saml20-idp-hosted.php
+                path: saml20-idp-hosted.php
+        {{- end }}
         {{- if and (not .Values.simplesamlphp.localUsers.enabled) .Values.simplesamlphp.idp.entityId }}
         - name: simplesamlphp-metadata
           configMap:
