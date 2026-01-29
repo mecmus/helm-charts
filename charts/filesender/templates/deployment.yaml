@@ -100,11 +100,6 @@ spec:
             - name: simplesamlphp-authsources
               mountPath: /opt/filesender/simplesaml/config/authsources.php
               subPath: authsources.php
-            {{- if .Values.simplesamlphp.localUsers.enabled }}
-            - name: simplesamlphp-metadata-idp-hosted
-              mountPath: /opt/filesender/simplesaml/metadata/saml20-idp-hosted.php
-              subPath: saml20-idp-hosted.php
-            {{- end }}
             {{- if and (not .Values.simplesamlphp.localUsers.enabled) .Values.simplesamlphp.idp.entityId }}
             - name: simplesamlphp-metadata
               mountPath: /opt/filesender/simplesaml/metadata/saml20-idp-remote.php
