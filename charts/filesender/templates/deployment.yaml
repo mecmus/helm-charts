@@ -135,14 +135,6 @@ spec:
             items:
               - key: authsources.php
                 path: authsources.php
-        {{- if .Values.simplesamlphp.localUsers.enabled }}
-        - name: simplesamlphp-metadata-idp-hosted
-          configMap:
-            name: {{ include "filesender.fullname" . }}-simplesamlphp
-            items:
-              - key: saml20-idp-hosted.php
-                path: saml20-idp-hosted.php
-        {{- end }}
         {{- if and (not .Values.simplesamlphp.localUsers.enabled) .Values.simplesamlphp.idp.entityId }}
         - name: simplesamlphp-metadata
           configMap:
