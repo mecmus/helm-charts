@@ -38,7 +38,7 @@ simplesamlphp:
   adminPassword: ""  # Sera généré si vide
   secretSalt: ""     # Sera généré si vide
   authType: "fake"   # saml, shibboleth, fake
-  authenticationSource: "example-sp"
+  authenticationSource: "default-sp"
   uidAttribute: "uid"
   emailAttribute: "email"
   nameAttribute: "cn"
