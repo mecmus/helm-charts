@@ -71,7 +71,7 @@ data:
         'example-userpass' => [
             'exampleauth:UserPass',
             {{- range .Values.simplesamlphp.localUsers.users }}
-            '{{ .username }}:' . getenv('LOCAL_USER_{{ .username | upper }}_PASSWORD') => [
+            ('{{ .username }}:' . getenv('LOCAL_USER_{{ .username | upper }}_PASSWORD')) => [
                 'uid' => ['{{ .uid }}'],
                 'email' => ['{{ .email }}'],
                 'cn' => ['{{ .username }}'],
@@ -98,12 +98,6 @@ data:
         'privatekey' => 'server.pem',
         'certificate' => 'server.crt',
         'auth' => 'example-userpass',
-        'authproc' => [
-            30 => [
-                'class' => 'core:AttributeMap',
-                'name2oid',
-            ],
-        ],
     ];
   {{- end }}
   

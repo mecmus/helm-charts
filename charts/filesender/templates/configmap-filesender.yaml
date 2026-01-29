@@ -46,7 +46,7 @@ data:
     
     // Authentication - SAML configuration is required even for fake mode
     $config['auth_sp_type'] = 'saml';
-    $config['auth_sp_saml_simplesamlphp_url'] = '/simplesaml/';
+    $config['auth_sp_saml_simplesamlphp_url'] = '{{ .Values.filesender.siteUrl }}/simplesaml';
     $config['auth_sp_saml_simplesamlphp_location'] = '/opt/filesender/simplesaml/';
     $config['auth_sp_saml_authentication_source'] = '{{ .Values.simplesamlphp.authenticationSource }}';
     $config['auth_sp_saml_uid_attribute'] = '{{ .Values.simplesamlphp.uidAttribute }}';
