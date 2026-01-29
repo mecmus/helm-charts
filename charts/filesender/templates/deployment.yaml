@@ -105,11 +105,9 @@ spec:
               mountPath: /opt/filesender/simplesaml/metadata/saml20-idp-hosted.php
               subPath: saml20-idp-hosted.php
             {{- end }}
-            {{- if and (not .Values.simplesamlphp.localUsers.enabled) .Values.simplesamlphp.idp.entityId }}
             - name: simplesamlphp-metadata
               mountPath: /opt/filesender/simplesaml/metadata/saml20-idp-remote.php
               subPath: saml20-idp-remote.php
-            {{- end }}
             {{- if .Values.persistence.enabled }}
             - name: filesender-data
               mountPath: /var/www/files
@@ -143,14 +141,12 @@ spec:
               - key: saml20-idp-hosted.php
                 path: saml20-idp-hosted.php
         {{- end }}
-        {{- if and (not .Values.simplesamlphp.localUsers.enabled) .Values.simplesamlphp.idp.entityId }}
         - name: simplesamlphp-metadata
           configMap:
             name: {{ include "filesender.fullname" . }}-simplesamlphp
             items:
               - key: saml20-idp-remote.php
                 path: saml20-idp-remote.php
-        {{- end }}
         {{- if .Values.persistence.enabled }}
         - name: filesender-data
           persistentVolumeClaim:
