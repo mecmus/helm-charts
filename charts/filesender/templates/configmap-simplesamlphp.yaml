@@ -99,3 +99,10 @@ data:
         'certificate' => '{{ .Values.simplesamlphp.idp.certificate }}',
     ];
     {{- end }}
+    {{- if .Values.simplesamlphp.localUsers.enabled }}
+    // L'IdP local doit connaitre le SP local
+    $metadata['{{ .Values.filesender.siteUrl }}/simplesaml/module.php/saml/sp/metadata.php/{{ .Values.simplesamlphp.authenticationSource }}'] = [
+        'AssertionConsumerService' => '{{ .Values.filesender.siteUrl }}/simplesaml/module.php/saml/sp/saml2-acs.php/{{ .Values.simplesamlphp.authenticationSource }}',
+        'SingleLogoutService' => '{{ .Values.filesender.siteUrl }}/simplesaml/module.php/saml/sp/saml2-logout.php/{{ .Values.simplesamlphp.authenticationSource }}',
+    ];
+    {{- end }}
