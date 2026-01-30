@@ -118,8 +118,14 @@ spec:
               mountPath: /var/www/log
             - name: simplesamlphp-metadata-sp-remote
               mountPath: /opt/filesender/simplesaml/metadata/saml20-sp-remote.php
-              subPath: saml20-sp-remote.php      
+              subPath: saml20-sp-remote.php    
+            - name: simplesamlphp-cert
+              mountPath: /opt/filesender/simplesaml/cert
+              readOnly: true  
       volumes:
+        - name: simplesamlphp-cert
+          secret:
+            secretName: {{ include "filesender.fullname" . }}-simplesamlphp-cert
         - name: simplesamlphp-metadata-sp-remote
           configMap:
             name: {{ include "filesender.fullname" . }}-simplesamlphp
