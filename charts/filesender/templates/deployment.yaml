@@ -116,8 +116,16 @@ spec:
               mountPath: /var/www/tmp
             - name: log
               mountPath: /var/www/log
-      
+            - name: simplesamlphp-metadata-sp-remote
+              mountPath: /opt/filesender/simplesaml/metadata/saml20-sp-remote.php
+              subPath: saml20-sp-remote.php      
       volumes:
+        - name: simplesamlphp-metadata-sp-remote
+          configMap:
+            name: {{ include "filesender.fullname" . }}-simplesamlphp
+            items:
+              - key: saml20-sp-remote.php
+                path: saml20-sp-remote.php
         - name: filesender-config
           configMap:
             name: {{ include "filesender.fullname" . }}-filesender

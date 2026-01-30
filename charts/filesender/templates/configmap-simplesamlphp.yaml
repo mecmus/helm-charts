@@ -99,6 +99,7 @@ data:
         'certificate' => '{{ .Values.simplesamlphp.idp.certificate }}',
     ];
     {{- end }}
+  saml20-sp-remote.php: |
     {{- if .Values.simplesamlphp.localUsers.enabled }}
     // L'IdP local doit connaitre le SP local
     $metadata['{{ .Values.filesender.siteUrl }}/simplesaml/module.php/saml/sp/metadata.php/{{ .Values.simplesamlphp.authenticationSource }}'] = [
