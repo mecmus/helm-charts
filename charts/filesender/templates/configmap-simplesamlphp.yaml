@@ -7,53 +7,60 @@ metadata:
 data:
   config.php: |
     <?php
-    // SimpleSAMLphp configuration
-    
     $config = [
         'baseurlpath' => '{{ .Values.filesender.siteUrl }}/simplesaml/',
         'certdir' => 'cert/',
         'loggingdir' => 'log/',
         'datadir' => 'data/',
         'tempdir' => '/tmp/simplesaml',
-        
         'technicalcontact_name' => 'Administrator',
         'technicalcontact_email' => '{{ .Values.filesender.adminEmail }}',
-        
         'secretsalt' => getenv('SIMPLESAMLPHP_SECRET_SALT'),
         'auth.adminpassword' => getenv('SIMPLESAMLPHP_ADMIN_PASSWORD'),
-        
         'admin.protectindexpage' => true,
         'admin.protectmetadata' => true,
-        
         'logging.level' => SimpleSAML\Logger::NOTICE,
         'logging.handler' => 'syslog',
         
-        'enable.saml20-idp' => false,
-        'enable.shib13-idp' => false,
-        'enable.adfs-idp' => false,
-        'enable.wsfed-sp' => false,
-        'enable.authmemcookie' => false,
+        'module.enable' => [
+            'core' => true,
+            'admin' => true,
+            'saml' => true,
+            'exampleauth' => true, // Toujours requis pour le backend de l'IdP local
+        ],
+        
+        // IMPORTANT : On réactive l'IdP car on va s'auto-héberger
+        'enable.saml20-idp' => {{ .Values.simplesamlphp.localUsers.enabled }},
     ];
   
   authsources.php: |
     <?php
     $config = [
-        'admin' => [
-            'core:AdminPassword',
-        ],
+        'admin' => ['core:AdminPassword'],
         
         {{- if .Values.simplesamlphp.localUsers.enabled }}
+        // 1. La source "Visible" par Filesender (Type SAML)
         '{{ .Values.simplesamlphp.authenticationSource }}' => [
+            'saml:SP',
+            'entityID' => '{{ .Values.filesender.siteUrl }}/simplesaml/module.php/saml/sp/metadata.php/{{ .Values.simplesamlphp.authenticationSource }}',
+            'idp' => 'urn:x-simplesamlphp:local-idp', // Doit correspondre à l'IdP défini plus bas
+            'discoURL' => null,
+        ],
+        
+        // 2. La source "Interne" (Base de données utilisateurs)
+        'example-userpass' => [
             'exampleauth:UserPass',
             {{- range .Values.simplesamlphp.localUsers.users }}
-            '{{ .username }}:{{ .password }}' => [
+            ('{{ .username }}:' . getenv('LOCAL_USER_{{ .username | upper }}_PASSWORD')) => [
                 'uid' => ['{{ .uid }}'],
-                'eduPersonAffiliation' => ['member', 'employee'],
-                'email' => '{{ .email }}',
+                'email' => ['{{ .email }}'],
+                'cn' => ['{{ .username }}'],
+                'eduPersonPrincipalName' => ['{{ .uid }}@example.com'],
             ],
             {{- end }}
         ],
         {{- else }}
+        // Mode PROD standard
         '{{ .Values.simplesamlphp.authenticationSource }}' => [
             'saml:SP',
             'entityID' => '{{ .Values.filesender.siteUrl }}/simplesaml/module.php/saml/sp/metadata.php/{{ .Values.simplesamlphp.authenticationSource }}',
@@ -61,13 +68,43 @@ data:
         ],
         {{- end }}
     ];
-  
-  {{- if and (not .Values.simplesamlphp.localUsers.enabled) .Values.simplesamlphp.idp.entityId }}
+
+  # Définition de l'IdP Local (C'est ce fichier qui manquait dans votre erreur Metadata initiale)
+  saml20-idp-hosted.php: |
+    <?php
+    $metadata['urn:x-simplesamlphp:local-idp'] = [
+        'host' => '__DEFAULT__',
+        'privatekey' => 'server.pem',
+        'certificate' => 'server.crt',
+        'auth' => 'example-userpass', // Utilise la liste d'utilisateurs définie dans authsources
+    ];
+
+  # Définition pour que le SP trouve l'IdP (Même si c'est local)
   saml20-idp-remote.php: |
     <?php
+    {{- if .Values.simplesamlphp.localUsers.enabled }}
+    $metadata['urn:x-simplesamlphp:local-idp'] = [
+        'name' => ['en' => 'Local Test IdP'],
+        'description' => 'Local IdP for testing',
+        'SingleSignOnService'  => '{{ .Values.filesender.siteUrl }}/simplesaml/saml2/idp/SSOService.php',
+        'SingleLogoutService'  => '{{ .Values.filesender.siteUrl }}/simplesaml/saml2/idp/SingleLogoutService.php',
+        'certificate' => 'server.crt',
+    ];
+    {{- end }}
+
+    {{- if and (not .Values.simplesamlphp.localUsers.enabled) .Values.simplesamlphp.idp.entityId }}
     $metadata['{{ .Values.simplesamlphp.idp.entityId }}'] = [
         'SingleSignOnService' => '{{ .Values.simplesamlphp.idp.ssoUrl }}',
         'SingleLogoutService' => '',
         'certificate' => '{{ .Values.simplesamlphp.idp.certificate }}',
     ];
-  {{- end }}
+    {{- end }}
+  saml20-sp-remote.php: |
+    <?php
+    {{- if .Values.simplesamlphp.localUsers.enabled }}
+    // L'IdP local doit connaitre le SP local
+    $metadata['{{ .Values.filesender.siteUrl }}/simplesaml/module.php/saml/sp/metadata.php/{{ .Values.simplesamlphp.authenticationSource }}'] = [
+        'AssertionConsumerService' => '{{ .Values.filesender.siteUrl }}/simplesaml/module.php/saml/sp/saml2-acs.php/{{ .Values.simplesamlphp.authenticationSource }}',
+        'SingleLogoutService' => '{{ .Values.filesender.siteUrl }}/simplesaml/module.php/saml/sp/saml2-logout.php/{{ .Values.simplesamlphp.authenticationSource }}',
+    ];
+    {{- end }}
