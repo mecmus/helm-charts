@@ -149,7 +149,7 @@ spec:
             - name: tmp
               mountPath: /var/www/tmp
             - name: log
-              mountPath: /var/www/log
+              mountPath: /opt/filesender/filesender/log
             - name: simplesamlphp-metadata-sp-remote
               mountPath: /opt/filesender/simplesaml/metadata/saml20-sp-remote.php
               subPath: saml20-sp-remote.php    
