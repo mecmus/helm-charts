@@ -17,7 +17,7 @@ fullnameOverride: ""
 filesender:
   siteUrl: "https://filesender.example.com"
   siteName: "FileSender"
-  admin: "admin@example.com"
+  admin: "testadmin"
   adminEmail: "admin@example.com"
   emailReplyTo: "noreply@example.com"
   defaultTimezone: "Europe/Paris"
@@ -32,6 +32,37 @@ filesender:
   maxTransferFiles: 100
   defaultTransferDaysValid: 20
   maxTransferDaysValid: 60
+  
+  # TeraSender (upload haute vitesse)
+  terasender:
+    enabled: true
+    advanced: false
+    workerCount: 6
+    startMode: "multiple"
+  
+  # Encryption
+  encryption:
+    enabled: true
+    mandatory: false
+    minPasswordLength: 12
+    mustHaveUpperAndLowerCase: true
+    mustHaveNumbers: true
+    mustHaveSpecialCharacters: true
+  
+  # Guest/Invités
+  guest:
+    enabled: true
+    defaultDaysValid: 20
+    maxDaysValid: 20
+    minDaysValid: 1
+    maxRecipients: 50
+    limitPerUser: 50
+  
+  # Sécurité
+  security:
+    forceSSL: true
+    useStrictCSP: true
+    banExtension: "exe,bat"
 
 # Configuration SimpleSAMLphp
 simplesamlphp:
@@ -39,8 +70,8 @@ simplesamlphp:
   secretSalt: ""     # Sera généré si vide
   authType: "fake"   # saml, shibboleth, fake
   authenticationSource: "default-sp"
-  uidAttribute: "uid"
-  emailAttribute: "email"
+  uidAttribute: "eduPersonTargetedID"
+  emailAttribute: "mail"
   nameAttribute: "cn"
   
   # Pour tests avec utilisateurs locaux
@@ -51,6 +82,10 @@ simplesamlphp:
         password: ""  # Sera généré si vide
         email: "test@example.com"
         uid: "testuser"
+      - username: "testadmin"
+        password: ""  # Sera généré si vide
+        email: "testadmin@example.com"
+        uid: "testadmin"
   
   # Configuration IdP
   idp:
