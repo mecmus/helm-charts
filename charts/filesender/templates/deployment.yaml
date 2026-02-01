@@ -55,7 +55,7 @@ spec:
               mountPath: /opt/filesender/filesender/config/config.php
               subPath: config.php
             - name: tmp
-              mountPath: /var/www/tmp
+              mountPath: {{ .Values.filesender.paths.tmp | default "/opt/filesender/filesender/tmp" }}
       containers:
         - name: {{ .Chart.Name }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
@@ -144,12 +144,12 @@ spec:
               subPath: saml20-idp-remote.php
             {{- if .Values.persistence.enabled }}
             - name: filesender-data
-              mountPath: /var/www/files
+              mountPath: {{ .Values.filesender.storage.path }}
             {{- end }}
             - name: tmp
-              mountPath: /var/www/tmp
+              mountPath: {{ .Values.filesender.paths.tmp | default "/opt/filesender/filesender/tmp" }}
             - name: log
-              mountPath: /opt/filesender/filesender/log
+              mountPath: {{ .Values.filesender.paths.log | default "/opt/filesender/filesender/log" }}
             - name: simplesamlphp-metadata-sp-remote
               mountPath: /opt/filesender/simplesaml/metadata/saml20-sp-remote.php
               subPath: saml20-sp-remote.php    
