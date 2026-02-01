@@ -53,8 +53,10 @@ data:
             {{- range .Values.simplesamlphp.localUsers.users }}
             ('{{ .username }}:' . getenv('LOCAL_USER_{{ .username | upper }}_PASSWORD')) => [
                 'uid' => ['{{ .uid }}'],
+                'mail' => ['{{ .email }}'],
                 'email' => ['{{ .email }}'],
                 'cn' => ['{{ .username }}'],
+                'eduPersonTargetedID' => ['{{ .uid }}'],
                 'eduPersonPrincipalName' => ['{{ .uid }}@example.com'],
             ],
             {{- end }}
