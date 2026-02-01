@@ -22,6 +22,19 @@ data:
         'logging.level' => SimpleSAML\Logger::NOTICE,
         'logging.handler' => 'syslog',
         
+        // Session storage in PostgreSQL
+        'store.type' => '{{ .Values.simplesamlphp.session.storeType | default "sql" }}',
+        'store.sql.dsn' => 'pgsql:host={{ if .Values.postgresql.external.enabled }}{{ .Values.postgresql.external.host }}{{ else }}{{ include "filesender.fullname" . }}-postgresql{{ end }};port={{ if .Values.postgresql.external.enabled }}{{ .Values.postgresql.external.port }}{{ else }}5432{{ end }};dbname={{ if .Values.postgresql.external.enabled }}{{ .Values.postgresql.external.database }}{{ else }}{{ .Values.postgresql.internal.database }}{{ end }}',
+        'store.sql.username' => '{{ if .Values.postgresql.external.enabled }}{{ .Values.postgresql.external.username }}{{ else }}{{ .Values.postgresql.internal.username }}{{ end }}',
+        'store.sql.password' => getenv('POSTGRES_PASSWORD'),
+        'store.sql.prefix' => '{{ .Values.simplesamlphp.session.tablePrefix | default "simplesaml_" }}',
+        
+        // Session cookie configuration
+        'session.cookie.path' => '{{ .Values.simplesamlphp.session.cookiePath | default "/" }}',
+        'session.phpsession.cookiename' => '{{ .Values.simplesamlphp.session.cookieName | default "SimpleSAMLSessionID" }}',
+        'session.cookie.secure' => true,
+        'session.cookie.samesite' => 'None',
+        
         'module.enable' => [
             'core' => true,
             'admin' => true,

@@ -37,12 +37,95 @@ data:
     // Storage configuration
     $config['storage_type'] = '{{ .Values.filesender.storage.type }}';
     $config['storage_filesystem_path'] = '{{ .Values.filesender.storage.path }}';
+    $config['storage_filesystem_shred_path'] = '{{ .Values.filesender.storage.shredPath | default "/opt/filesender/filesender/shredfiles" }}';
+    $config['storage_usage_warning'] = {{ .Values.filesender.storage.usageWarning | default 20 }};
+    
+    // Paths configuration
+    $config['tmp_path'] = '{{ .Values.filesender.paths.tmp | default "/opt/filesender/filesender/tmp/" }}';
+    $config['log_facilities'] = [
+        'path' => '{{ .Values.filesender.paths.log | default "/opt/filesender/filesender/log/" }}',
+    ];
+    
+    // Session configuration
+    $config['session_cookie_path'] = '{{ .Values.filesender.sessionCookiePath | default "/" }}';
+    {{- if hasKey .Values.filesender.auth "forceSessionStartFirst" }}
+    $config['auth_sp_force_session_start_first'] = {{ .Values.filesender.auth.forceSessionStartFirst }};
+    {{- else }}
+    $config['auth_sp_force_session_start_first'] = true;
+    {{- end }}
     
     // Transfer limits
     $config['max_transfer_size'] = {{ .Values.filesender.maxTransferSize }};
     $config['max_transfer_files'] = {{ .Values.filesender.maxTransferFiles }};
     $config['default_transfer_days_valid'] = {{ .Values.filesender.defaultTransferDaysValid }};
     $config['max_transfer_days_valid'] = {{ .Values.filesender.maxTransferDaysValid }};
+    
+    // TeraSender configuration
+    {{- if hasKey .Values.filesender.terasender "enabled" }}
+    $config['terasender_enabled'] = {{ .Values.filesender.terasender.enabled }};
+    {{- else }}
+    $config['terasender_enabled'] = true;
+    {{- end }}
+    {{- if hasKey .Values.filesender.terasender "advanced" }}
+    $config['terasender_advanced'] = {{ .Values.filesender.terasender.advanced }};
+    {{- else }}
+    $config['terasender_advanced'] = false;
+    {{- end }}
+    $config['terasender_worker_count'] = {{ .Values.filesender.terasender.workerCount | default 6 }};
+    $config['terasender_start_mode'] = '{{ .Values.filesender.terasender.startMode | default "multiple" }}';
+    
+    // Encryption configuration
+    {{- if hasKey .Values.filesender.encryption "enabled" }}
+    $config['encryption_enabled'] = {{ .Values.filesender.encryption.enabled }};
+    {{- else }}
+    $config['encryption_enabled'] = true;
+    {{- end }}
+    {{- if hasKey .Values.filesender.encryption "mandatory" }}
+    $config['encryption_mandatory'] = {{ .Values.filesender.encryption.mandatory }};
+    {{- else }}
+    $config['encryption_mandatory'] = false;
+    {{- end }}
+    $config['encryption_min_password_length'] = {{ .Values.filesender.encryption.minPasswordLength | default 12 }};
+    {{- if hasKey .Values.filesender.encryption "mustHaveUpperAndLowerCase" }}
+    $config['encryption_password_must_have_upper_and_lower_case'] = {{ .Values.filesender.encryption.mustHaveUpperAndLowerCase }};
+    {{- else }}
+    $config['encryption_password_must_have_upper_and_lower_case'] = true;
+    {{- end }}
+    {{- if hasKey .Values.filesender.encryption "mustHaveNumbers" }}
+    $config['encryption_password_must_have_numbers'] = {{ .Values.filesender.encryption.mustHaveNumbers }};
+    {{- else }}
+    $config['encryption_password_must_have_numbers'] = true;
+    {{- end }}
+    {{- if hasKey .Values.filesender.encryption "mustHaveSpecialCharacters" }}
+    $config['encryption_password_must_have_special_characters'] = {{ .Values.filesender.encryption.mustHaveSpecialCharacters }};
+    {{- else }}
+    $config['encryption_password_must_have_special_characters'] = true;
+    {{- end }}
+    
+    // Guest configuration
+    {{- if hasKey .Values.filesender.guest "enabled" }}
+    $config['guest_enabled'] = {{ .Values.filesender.guest.enabled }};
+    {{- else }}
+    $config['guest_enabled'] = true;
+    {{- end }}
+    $config['guest_default_days_valid'] = {{ .Values.filesender.guest.defaultDaysValid | default 20 }};
+    $config['guest_max_days_valid'] = {{ .Values.filesender.guest.maxDaysValid | default 20 }};
+    $config['guest_min_days_valid'] = {{ .Values.filesender.guest.minDaysValid | default 1 }};
+    $config['guest_max_recipients'] = {{ .Values.filesender.guest.maxRecipients | default 50 }};
+    $config['guest_limit_per_user'] = {{ .Values.filesender.guest.limitPerUser | default 50 }};
+    
+    // Security configuration
+    {{- if hasKey .Values.filesender.security "forceSSL" }}
+    $config['force_ssl'] = {{ .Values.filesender.security.forceSSL }};
+    {{- else }}
+    $config['force_ssl'] = true;
+    {{- end }}
+    {{- if hasKey .Values.filesender.security "useStrictCSP" }}
+    $config['use_strict_csp'] = {{ .Values.filesender.security.useStrictCSP }};
+    {{- else }}
+    $config['use_strict_csp'] = true;
+    {{- end }}
+    $config['ban_extension'] = '{{ .Values.filesender.security.banExtension | default "exe,bat" }}';
     
     // Authentication - SAML configuration is required even for fake mode
     $config['auth_sp_type'] = 'saml';

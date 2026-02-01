@@ -22,10 +22,22 @@ filesender:
   emailReplyTo: "noreply@example.com"
   defaultTimezone: "Europe/Paris"
   
+  # Session configuration
+  sessionCookiePath: "/"
+  auth:
+    forceSessionStartFirst: true
+  
   # Stockage des fichiers
   storage:
     type: "filesystem"
-    path: "/var/www/files"
+    path: "/opt/filesender/filesender/files"
+    shredPath: "/opt/filesender/filesender/shredfiles"
+    usageWarning: 20
+  
+  # Chemins de fichiers
+  paths:
+    tmp: "/opt/filesender/filesender/tmp"
+    log: "/opt/filesender/filesender/log"
   
   # Limites
   maxTransferSize: "107374182400"  # 100GB
@@ -73,6 +85,13 @@ simplesamlphp:
   uidAttribute: "eduPersonTargetedID"
   emailAttribute: "mail"
   nameAttribute: "cn"
+  
+  # Session configuration
+  session:
+    storeType: "sql"
+    cookiePath: "/"
+    cookieName: "SimpleSAMLSessionID"
+    tablePrefix: "simplesaml_"
   
   # Pour tests avec utilisateurs locaux
   localUsers:
