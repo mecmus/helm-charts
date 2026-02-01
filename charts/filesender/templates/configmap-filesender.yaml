@@ -135,3 +135,30 @@ data:
     $config['auth_sp_saml_uid_attribute'] = '{{ .Values.simplesamlphp.uidAttribute }}';
     $config['auth_sp_saml_email_attribute'] = '{{ .Values.simplesamlphp.emailAttribute }}';
     $config['auth_sp_saml_name_attribute'] = '{{ .Values.simplesamlphp.nameAttribute }}';
+    
+    // TeraSender (upload haute vitesse)
+    $config['terasender_enabled'] = {{ .Values.filesender.terasender.enabled | ternary "true" "false" }};
+    $config['terasender_advanced'] = {{ .Values.filesender.terasender.advanced | ternary "true" "false" }};
+    $config['terasender_worker_count'] = {{ .Values.filesender.terasender.workerCount }};
+    $config['terasender_start_mode'] = '{{ .Values.filesender.terasender.startMode }}';
+    
+    // Encryption
+    $config['encryption_enabled'] = {{ .Values.filesender.encryption.enabled | ternary "true" "false" }};
+    $config['encryption_mandatory'] = {{ .Values.filesender.encryption.mandatory | ternary "true" "false" }};
+    $config['encryption_min_password_length'] = {{ .Values.filesender.encryption.minPasswordLength }};
+    $config['encryption_password_must_have_upper_and_lower_case'] = {{ .Values.filesender.encryption.mustHaveUpperAndLowerCase | ternary "true" "false" }};
+    $config['encryption_password_must_have_numbers'] = {{ .Values.filesender.encryption.mustHaveNumbers | ternary "true" "false" }};
+    $config['encryption_password_must_have_special_characters'] = {{ .Values.filesender.encryption.mustHaveSpecialCharacters | ternary "true" "false" }};
+    
+    // Guest/Invités
+    $config['guest_options'] = {{ .Values.filesender.guest.enabled | ternary "true" "false" }};
+    $config['default_guest_days_valid'] = {{ .Values.filesender.guest.defaultDaysValid }};
+    $config['max_guest_days_valid'] = {{ .Values.filesender.guest.maxDaysValid }};
+    $config['min_guest_days_valid'] = {{ .Values.filesender.guest.minDaysValid }};
+    $config['guest_recipients_max'] = {{ .Values.filesender.guest.maxRecipients }};
+    $config['guest_limit_per_user'] = {{ .Values.filesender.guest.limitPerUser }};
+    
+    // Sécurité
+    $config['force_ssl'] = {{ .Values.filesender.security.forceSSL | ternary "true" "false" }};
+    $config['use_strict_csp'] = {{ .Values.filesender.security.useStrictCSP | ternary "true" "false" }};
+    $config['ban_extension'] = '{{ .Values.filesender.security.banExtension }}';
