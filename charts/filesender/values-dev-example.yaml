@@ -1,0 +1,100 @@
+# Example configuration for FileSender with Fake authentication
+# This file demonstrates a development/testing configuration
+
+replicaCount: 1
+
+image:
+  repository: ghcr.io/mecmus/filesender
+  tag: "3.3-oidc"
+  pullPolicy: IfNotPresent
+
+filesender:
+  siteUrl: "http://localhost:8080"
+  siteName: "FileSender Dev"
+  admin: "admin@example.com"
+  adminEmail: "admin@example.com"
+  emailReplyTo: "noreply@example.com"
+  defaultTimezone: "Europe/Paris"
+  
+  storage:
+    type: "filesystem"
+    path: "/opt/filesender/filesender/files"
+  
+  paths:
+    tmp: "/opt/filesender/filesender/tmp"
+    log: "/opt/filesender/filesender/log"
+  
+  # Transfer limits
+  maxTransferSize: "10737418240"  # 10GB for dev
+  maxTransferFiles: 50
+  defaultTransferDaysValid: 7
+  maxTransferDaysValid: 14
+
+  # Fake authentication for development
+  auth:
+    type: "fake"
+    fake:
+      enabled: true
+      uid: "developer"
+      email: "developer@example.com"
+      name: "Developer User"
+
+# PostgreSQL configuration
+postgresql:
+  external:
+    enabled: false
+  
+  internal:
+    enabled: true
+    database: "filesender"
+    username: "filesender"
+    password: "devpassword"
+    persistence:
+      enabled: false  # Use emptyDir for dev
+
+# Persistence for uploaded files
+persistence:
+  enabled: false  # Use emptyDir for dev
+
+# Service
+service:
+  type: ClusterIP
+  port: 80
+
+# Ingress disabled for local dev
+ingress:
+  enabled: false
+
+# Minimal resources for development
+resources:
+  requests:
+    memory: "128Mi"
+    cpu: "100m"
+  limits:
+    memory: "256Mi"
+    cpu: "500m"
+
+# Probes
+livenessProbe:
+  enabled: true
+  httpGet:
+    path: /health
+    port: 80
+  initialDelaySeconds: 30
+  periodSeconds: 10
+
+readinessProbe:
+  enabled: true
+  httpGet:
+    path: /health
+    port: 80
+  initialDelaySeconds: 10
+  periodSeconds: 5
+
+# Disable cleanup for dev
+cleanup:
+  enabled: false
+
+# Disable autoscaling for dev
+autoscaling:
+  enabled: false

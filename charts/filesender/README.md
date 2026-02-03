@@ -193,6 +193,36 @@ cleanup:
   schedule: "0 2 * * *"  # Tous les jours à 2h du matin
 ```
 
+## Example Configurations
+
+Deux fichiers d'exemple sont fournis pour vous aider à démarrer :
+
+### Development (Fake Auth)
+
+```bash
+helm install filesender-dev mecmus/filesender -f values-dev-example.yaml
+```
+
+Cette configuration utilise :
+- Authentification fake (pas de dépendance externe)
+- PostgreSQL interne sans persistence
+- Pas de persistence pour les fichiers
+- Ressources minimales
+
+### Production (OIDC Auth)
+
+```bash
+# Modifiez values-production-example.yaml avec vos credentials Azure AD
+helm install filesender-prod mecmus/filesender -f values-production-example.yaml
+```
+
+Cette configuration utilise :
+- Authentification OIDC avec Microsoft Entra ID
+- PostgreSQL interne avec persistence
+- Persistence pour les fichiers
+- Autoscaling activé
+- Ingress avec TLS
+
 ## Ports et Service
 
 Le conteneur écoute sur le port **80** (nginx + PHP-FPM).

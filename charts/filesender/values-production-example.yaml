@@ -1,0 +1,143 @@
+# Example configuration for FileSender with OIDC authentication
+# This file demonstrates a production-ready configuration with Microsoft Entra ID
+
+replicaCount: 2
+
+image:
+  repository: ghcr.io/mecmus/filesender
+  tag: "3.3-oidc"
+  pullPolicy: IfNotPresent
+
+filesender:
+  siteUrl: "https://filesender.example.com"
+  siteName: "FileSender Production"
+  admin: "admin@example.com"
+  adminEmail: "admin@example.com"
+  emailReplyTo: "noreply@example.com"
+  defaultTimezone: "Europe/Paris"
+  
+  storage:
+    type: "filesystem"
+    path: "/opt/filesender/filesender/files"
+  
+  paths:
+    tmp: "/opt/filesender/filesender/tmp"
+    log: "/opt/filesender/filesender/log"
+  
+  # Transfer limits (100GB max)
+  maxTransferSize: "107374182400"
+  maxTransferFiles: 100
+  defaultTransferDaysValid: 20
+  maxTransferDaysValid: 60
+
+  # OIDC authentication with Microsoft Entra ID
+  auth:
+    type: "oidc"
+    oidc:
+      # Replace with your Azure AD tenant ID
+      issuer: "https://login.microsoftonline.com/YOUR_TENANT_ID/v2.0"
+      # Replace with your Application (client) ID
+      clientId: "YOUR_CLIENT_ID"
+      # Replace with your client secret
+      clientSecret: "YOUR_CLIENT_SECRET"
+      # Or use existing secret
+      # existingSecret: "filesender-oidc-credentials"
+      
+      uidAttribute: "sub"
+      emailAttribute: "email"
+      nameAttribute: "name"
+      
+      scopes:
+        - "openid"
+        - "profile"
+        - "email"
+      
+      # Optional: Restrict to specific groups
+      # requiredGroups:
+      #   - "filesender-users"
+      # groupsClaim: "groups"
+
+# PostgreSQL configuration
+postgresql:
+  external:
+    enabled: false
+  
+  internal:
+    enabled: true
+    database: "filesender"
+    username: "filesender"
+    # Password will be auto-generated if not provided
+    password: ""
+    persistence:
+      enabled: true
+      size: 20Gi
+      # storageClass: "fast-ssd"
+
+# Persistence for uploaded files
+persistence:
+  enabled: true
+  size: 500Gi
+  # storageClass: "standard"
+  accessMode: ReadWriteOnce
+
+# Service
+service:
+  type: ClusterIP
+  port: 80
+
+# Ingress configuration
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    nginx.ingress.kubernetes.io/proxy-body-size: "0"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "600"
+  hosts:
+    - host: filesender.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: filesender-tls
+      hosts:
+        - filesender.example.com
+
+# Resources
+resources:
+  requests:
+    memory: "512Mi"
+    cpu: "250m"
+  limits:
+    memory: "1Gi"
+    cpu: "1000m"
+
+# Probes
+livenessProbe:
+  enabled: true
+  httpGet:
+    path: /health
+    port: 80
+  initialDelaySeconds: 30
+  periodSeconds: 10
+
+readinessProbe:
+  enabled: true
+  httpGet:
+    path: /health
+    port: 80
+  initialDelaySeconds: 10
+  periodSeconds: 5
+
+# Cleanup cronjob (runs daily at 2 AM)
+cleanup:
+  enabled: true
+  schedule: "0 2 * * *"
+
+# Autoscaling
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 5
+  targetCPUUtilizationPercentage: 70
