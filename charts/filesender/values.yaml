@@ -161,6 +161,21 @@ ingress:
           pathType: Prefix
   tls: []
 
+# HTTPRoute (Gateway API)
+httpRoute:
+  enabled: false
+  annotations: {}
+  parentRefs:
+    - name: gateway
+      sectionName: http
+  hostnames:
+    - filesender.example.com
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+
 # Resources
 resources:
   requests:
@@ -191,6 +206,13 @@ readinessProbe:
 cleanup:
   enabled: true
   schedule: "0 2 * * *"
+
+# Autoscaling
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 80
 
 nodeSelector: {}
 tolerations: []
