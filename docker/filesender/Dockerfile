@@ -1,75 +1,72 @@
-# Stage 1: Builder - Compilation et collecte des dépendances
-FROM dhi.io/php:8.5.0-dev AS builder
+# Multi-stage Dockerfile pour FileSender v3.x - Image légère OIDC/Fake
+FROM php:8.2-fpm-alpine AS builder
 
-USER root
+ARG FILESENDER_VERSION=master3
 
-# Installation des dépendances de build
-RUN apt-get update && apt-get install -y \
-    curl tar git unzip \
-    libpq-dev libpng-dev libjpeg-dev libfreetype6-dev \
-    libicu-dev libzip-dev libonig-dev libxml2-dev libpcre2-dev \
-    && apt-get clean && rm -rf /var/lib/apt/lists/*
+# Dépendances de build
+RUN apk add --no-cache --virtual .build-deps \
+    git \
+    curl \
+    && curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
 
-# Compilation des extensions PHP requises par FileSender
-RUN cd $PHP_SRC_DIR/ext/pdo_mysql && phpize && ./configure && make -j$(nproc) && make install \
-    && cd $PHP_SRC_DIR/ext/pdo_pgsql && phpize && ./configure && make -j$(nproc) && make install \
-    && cd $PHP_SRC_DIR/ext/gd && phpize && ./configure --with-freetype --with-jpeg && make -j$(nproc) && make install \
-    && cd $PHP_SRC_DIR/ext/zip && phpize && ./configure && make -j$(nproc) && make install \
-    && cd $PHP_SRC_DIR/ext/soap && phpize && ./configure && make -j$(nproc) && make install \
-    && cd $PHP_SRC_DIR/ext/bcmath && phpize && ./configure && make -j$(nproc) && make install \
-    && cd $PHP_SRC_DIR/ext/exif && phpize && ./configure && make -j$(nproc) && make install
+# Téléchargement de FileSender
+WORKDIR /build
+RUN git clone --depth 1 --branch ${FILESENDER_VERSION} https://github.com/filesender/filesender.git filesender
 
-# Préparation de la structure de collecte
-RUN mkdir -p /build/php-extensions /build/lib /build/php-conf
+# Installation de la dépendance OIDC (jumbojett/openid-connect-php)
+WORKDIR /build/filesender/optional-dependencies/oidc
+RUN composer install --no-dev --optimize-autoloader
 
-# Collecte des extensions (.so)
-RUN cp $(php-config --extension-dir)/*.so /build/php-extensions/
+# Image finale - SANS SimpleSAMLphp
+FROM php:8.2-fpm-alpine
 
-# Collecte des bibliothèques système partagées (.so) nécessaires
-RUN for so in /build/php-extensions/*.so; do \
-      ldd "$so" | grep "=> /" | awk '{print $3}' | xargs -I '{}' cp -vL '{}' /build/lib/; \
-    done || true
-
-# Génération des fichiers de configuration .ini
-RUN for ext in pdo_mysql pdo_pgsql gd zip soap bcmath exif; do \
-       echo "extension=${ext}.so" > /build/php-conf/${ext}.ini; \
-    done
-
-# Préparation de l'application
 ARG FILESENDER_VERSION=3.3
-ARG SIMPLESAMLPHP_VERSION=2.2.3
-WORKDIR /build/app
-RUN git clone --depth 1 --branch master3 https://github.com/filesender/filesender.git filesender && \
-    curl -L https://github.com/simplesamlphp/simplesamlphp/releases/download/v${SIMPLESAMLPHP_VERSION}/simplesamlphp-${SIMPLESAMLPHP_VERSION}-full.tar.gz | tar xz && \
-    mv simplesamlphp-${SIMPLESAMLPHP_VERSION} simplesaml && \
-    mkdir -p filesender/files filesender/tmp filesender/log && \
-    chown -R 1000:1000 filesender simplesaml
-
-# Stage 2: Runtime - Image sécurisée Docker Hardened
-FROM dhi.io/php:8.5.0-fpm
-
-# Information sur la version
-ARG FILESENDER_VERSION=3.3
-
-# Metadata
 LABEL org.opencontainers.image.source="https://github.com/mecmus/helm-charts" \
-      org.opencontainers.image.description="FileSender v${FILESENDER_VERSION} Hardened Production Image" \
+      org.opencontainers.image.description="FileSender v${FILESENDER_VERSION} - Lightweight OIDC/Fake (no SimpleSAMLphp)" \
       org.opencontainers.image.version="${FILESENDER_VERSION}"
 
-# 1. Copie des librairies système vers le chemin standard
-COPY --from=builder /build/lib/ /usr/lib/x86_64-linux-gnu/
+# Dépendances runtime
+RUN apk add --no-cache \
+    postgresql-libs \
+    libpng \
+    libjpeg-turbo \
+    freetype \
+    icu-libs \
+    libxml2 \
+    oniguruma \
+    nginx \
+    supervisor \
+    curl
 
-# 2. Copie des extensions PHP vers le chemin attendu par PHP 8.5 dans DHI
-COPY --from=builder /build/php-extensions/ /opt/php-8.5/lib/php/extensions/no-debug-non-zts-20250925/
+# Extensions PHP
+RUN apk add --no-cache --virtual .build-deps \
+    postgresql-dev libpng-dev libjpeg-turbo-dev freetype-dev \
+    icu-dev libxml2-dev oniguruma-dev \
+    && docker-php-ext-configure gd --with-freetype --with-jpeg \
+    && docker-php-ext-install -j$(nproc) pdo_pgsql pgsql mbstring xml intl gd \
+    && apk del .build-deps
 
-# 3. Copie de la configuration PHP
-COPY --from=builder /build/php-conf/ /opt/php-8.5/etc/php/conf.d/
+# Structure des répertoires FileSender
+RUN mkdir -p \
+    /opt/filesender/filesender/files \
+    /opt/filesender/filesender/tmp \
+    /opt/filesender/filesender/log \
+    /run/nginx \
+    && chown -R www-data:www-data /opt/filesender /run/nginx
 
-# 4. Copie des fichiers applicatifs
-COPY --from=builder --chown=1000:1000 /build/app/filesender /var/www/html
-COPY --from=builder --chown=1000:1000 /build/app/simplesaml /var/www/simplesaml
+# Copie de FileSender avec dépendances OIDC
+COPY --from=builder --chown=www-data:www-data /build/filesender /opt/filesender/filesender
 
-# Port PHP-FPM
-EXPOSE 9000
+# Nginx config
+COPY nginx.conf /etc/nginx/nginx.conf
+COPY default.conf /etc/nginx/http.d/default.conf
 
-USER 1000
+# Supervisor config
+COPY supervisord.conf /etc/supervisord.conf
+
+EXPOSE 80
+
+HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
+    CMD wget --quiet --tries=1 --spider http://localhost/health || exit 1
+
+CMD ["/usr/bin/supervisord", "-c", "/etc/supervisord.conf"]

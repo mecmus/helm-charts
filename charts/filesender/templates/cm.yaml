@@ -7,20 +7,69 @@ metadata:
 data:
   config.php: |
     <?php
-    $config['site_url'] = '{{ .Values.config.site_url }}';
-    $config['admin_email'] = '{{ .Values.config.admin_email }}';
+    // Site configuration
+    $config['site_url'] = '{{ .Values.filesender.siteUrl }}';
+    $config['site_name'] = '{{ .Values.filesender.siteName }}';
+    $config['admin'] = '{{ .Values.filesender.admin }}';
+    $config['admin_email'] = '{{ .Values.filesender.adminEmail }}';
+    $config['email_reply_to'] = '{{ .Values.filesender.emailReplyTo }}';
+    $config['default_timezone'] = '{{ .Values.filesender.defaultTimezone }}';
     
-    $config['db_type'] = '{{ .Values.config.db.type }}';
-    $config['db_host'] = '{{ .Values.config.db.host }}';
-    $config['db_port'] = {{ .Values.config.db.port }};
-    $config['db_database'] = '{{ .Values.config.db.name }}';
-    $config['db_username'] = '{{ .Values.config.db.user }}';
-    $config['db_password'] = '{{ .Values.config.db.password }}';
-
-    {{- if .Values.config.sso.enabled }}
-    $config['authentication'] = 'saml2';
-    $config['saml_sp_entityid'] = '{{ .Values.config.sso.sp_entity_id }}';
-    $config['saml_idp_entityid'] = '{{ .Values.config.sso.idp_entity_id }}';
-    $config['saml_idp_sso_url'] = '{{ .Values.config.sso.idp_sso_service_url }}';
-    $config['saml_idp_certificate'] = '{{ .Values.config.sso.idp_certificate }}';
+    // Database
+    {{- if .Values.postgresql.external.enabled }}
+    $config['db_type'] = 'pgsql';
+    $config['db_host'] = '{{ .Values.postgresql.external.host }}';
+    $config['db_port'] = {{ .Values.postgresql.external.port }};
+    $config['db_database'] = '{{ .Values.postgresql.external.database }}';
+    $config['db_username'] = '{{ .Values.postgresql.external.username }}';
+    $config['db_password'] = getenv('POSTGRES_PASSWORD');
+    {{- else }}
+    $config['db_type'] = 'pgsql';
+    $config['db_host'] = '{{ include "filesender.fullname" . }}-postgresql';
+    $config['db_port'] = 5432;
+    $config['db_database'] = '{{ .Values.postgresql.internal.database }}';
+    $config['db_username'] = '{{ .Values.postgresql.internal.username }}';
+    $config['db_password'] = getenv('POSTGRES_PASSWORD');
     {{- end }}
+    
+    // Storage
+    $config['storage_type'] = '{{ .Values.filesender.storage.type }}';
+    $config['storage_filesystem_path'] = '{{ .Values.filesender.storage.path }}';
+    $config['tmp_path'] = '{{ .Values.filesender.paths.tmp }}';
+    
+    // Transfer limits
+    $config['max_transfer_size'] = {{ .Values.filesender.maxTransferSize }};
+    $config['max_transfer_files'] = {{ .Values.filesender.maxTransferFiles }};
+    $config['default_transfer_days_valid'] = {{ .Values.filesender.defaultTransferDaysValid }};
+    $config['max_transfer_days_valid'] = {{ .Values.filesender.maxTransferDaysValid }};
+    
+    // Authentication
+    {{- if eq .Values.filesender.auth.type "fake" }}
+    // FAKE mode - for dev/test only
+    $config['auth_sp_type'] = 'fake';
+    $config['auth_sp_fake_authenticated'] = true;
+    $config['auth_sp_fake_uid'] = '{{ .Values.filesender.auth.fake.uid }}';
+    $config['auth_sp_fake_email'] = '{{ .Values.filesender.auth.fake.email }}';
+    $config['auth_sp_fake_name'] = '{{ .Values.filesender.auth.fake.name }}';
+    {{- else if eq .Values.filesender.auth.type "oidc" }}
+    // OIDC mode - for Microsoft Entra ID
+    $config['auth_sp_type'] = 'oidc';
+    $config['auth_sp_oidc_issuer'] = '{{ .Values.filesender.auth.oidc.issuer }}';
+    $config['auth_sp_oidc_uid_attribute'] = '{{ .Values.filesender.auth.oidc.uidAttribute }}';
+    $config['auth_sp_oidc_email_attribute'] = '{{ .Values.filesender.auth.oidc.emailAttribute }}';
+    $config['auth_sp_oidc_name_attribute'] = '{{ .Values.filesender.auth.oidc.nameAttribute }}';
+    $config['auth_sp_oidc_scopes'] = {{ .Values.filesender.auth.oidc.scopes | toJson }};
+    {{- if .Values.filesender.auth.oidc.requiredGroups }}
+    $config['auth_sp_oidc_required_groups'] = {{ .Values.filesender.auth.oidc.requiredGroups | toJson }};
+    $config['auth_sp_oidc_groups_claim'] = '{{ .Values.filesender.auth.oidc.groupsClaim }}';
+    {{- end }}
+    {{- end }}
+
+  config_private.php: |
+    <?php
+    {{- if eq .Values.filesender.auth.type "oidc" }}
+    // OIDC credentials - loaded from environment variables
+    $config['auth_sp_oidc_client_id'] = getenv('OIDC_CLIENT_ID');
+    $config['auth_sp_oidc_client_secret'] = getenv('OIDC_CLIENT_SECRET');
+    {{- end }}
+

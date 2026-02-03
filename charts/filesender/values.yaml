@@ -1,23 +1,118 @@
-# Default values for filesender.
-# This is a YAML-formatted file.
-# Declare variables to be passed into your templates.
-
-# This will set the replicaset count more information can be found here: https://kubernetes.io/docs/concepts/workloads/controllers/replicaset/
 replicaCount: 1
 
-# This sets the container image more information can be found here: https://kubernetes.io/docs/concepts/containers/images/
 image:
   repository: ghcr.io/mecmus/filesender
-  # This sets the pull policy for images.
+  tag: "3.3-oidc"  # Nouvelle image sans SimpleSAMLphp
   pullPolicy: IfNotPresent
-  # Overrides the image tag whose default is the chart appVersion.
-  tag: "3.3-php8.5.0"
 
-# This is for the secrets for pulling an image from a private repository more information can be found here: https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/
 imagePullSecrets: []
-# This is to override the chart name.
 nameOverride: ""
 fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  automount: true
+  annotations: {}
+  name: ""
+
+podAnnotations: {}
+podLabels: {}
+podSecurityContext: {}
+securityContext: {}
+
+filesender:
+  siteUrl: "https://filesender.example.com"
+  siteName: "FileSender"
+  admin: "admin@example.com"
+  adminEmail: "admin@example.com"
+  emailReplyTo: "noreply@example.com"
+  defaultTimezone: "Europe/Paris"
+  
+  # Storage
+  storage:
+    type: "filesystem"
+    path: "/opt/filesender/filesender/files"
+  
+  paths:
+    tmp: "/opt/filesender/filesender/tmp"
+    log: "/opt/filesender/filesender/log"
+  
+  # Transfer limits
+  maxTransferSize: "107374182400"
+  maxTransferFiles: 100
+  defaultTransferDaysValid: 20
+  maxTransferDaysValid: 60
+
+  # Authentication - SIMPLIFIED
+  auth:
+    # Type: "oidc" (production with Entra ID) or "fake" (dev/test)
+    type: "oidc"
+    
+    # Fake mode - Zero dependencies, for dev/test only
+    fake:
+      enabled: false
+      uid: "testuser"
+      email: "test@example.com"
+      name: "Test User"
+    
+    # OIDC mode - For Microsoft Entra ID (Azure AD)
+    oidc:
+      # Microsoft Entra ID issuer URL
+      # Format: https://login.microsoftonline.com/<TENANT_ID>/v2.0
+      issuer: ""
+      
+      # Client credentials (from Azure App Registration)
+      clientId: ""
+      clientSecret: ""
+      
+      # Or use existing secret with keys: oidc-client-id, oidc-client-secret
+      existingSecret: ""
+      
+      # Attribute mapping
+      uidAttribute: "sub"      # or "oid" for Azure Object ID
+      emailAttribute: "email"
+      nameAttribute: "name"
+      
+      # Scopes to request
+      scopes:
+        - "openid"
+        - "profile"
+        - "email"
+      
+      # Optional: Restrict to specific groups
+      requiredGroups: []
+      groupsClaim: "groups"
+
+# PostgreSQL configuration
+postgresql:
+  external:
+    enabled: false
+    host: ""
+    port: 5432
+    database: "filesender"
+    username: "filesender"
+    password: ""
+    existingSecret: ""
+    secretKey: "password"
+  
+  internal:
+    enabled: true
+    image:
+      repository: postgres
+      tag: "15-alpine"
+    database: "filesender"
+    username: "filesender"
+    password: ""
+    persistence:
+      enabled: true
+      size: 10Gi
+
+# Persistence for uploaded files
+persistence:
+  enabled: true
+  size: 100Gi
+  storageClass: ""
+  accessMode: ReadWriteOnce
 
 # This section builds out the service account more information can be found here: https://kubernetes.io/docs/concepts/security/service-accounts/
 serviceAccount:
@@ -49,147 +144,55 @@ securityContext: {}
   # runAsNonRoot: true
   # runAsUser: 1000
 
-# This is for setting up a service more information can be found here: https://kubernetes.io/docs/concepts/services-networking/service/
+# Service
 service:
-  # This sets the service type more information can be found here: https://kubernetes.io/docs/concepts/services-networking/service/#publishing-services-service-types
   type: ClusterIP
-  # Target port is 9000 (PHP-FPM)
-  port: 9000
+  port: 80
 
-# Persistence pour le stockage des fichiers
-persistence:
-  enabled: true
-  size: 10Gi
-  accessModes:
-    - ReadWriteOnce
-  storageClass: ""
-
-# Tâches périodiques (Nettoyage des fichiers)
-cronjob:
-  enabled: true
-  schedule: "0 1 * * *" # Tous les jours à 1h du matin
-
-config:
-  # FileSender configuration
-  site_url: "http://filesender.example.com"
-  admin_email: "admin@example.com"
-  
-  # Database configuration
-  db:
-    type: "pgsql" # pgsql or mysql
-    host: "filesender-db"
-    port: 5432
-    name: "filesender"
-    user: "filesender"
-    password: ""
-
-  # SSO configuration (Azure AD / SAML)
-  sso:
-    enabled: false
-    type: "saml2"
-    sp_entity_id: "https://filesender.example.com/simplesaml/module.php/saml/sp/metadata.php/default-sp"
-    idp_entity_id: "https://sts.windows.net/TENANT-ID/"
-    idp_sso_service_url: "https://login.microsoftonline.com/TENANT-ID/saml2"
-    idp_certificate: ""
-
-# This block is for setting up the ingress for more information can be found here: https://kubernetes.io/docs/concepts/services-networking/ingress/
+# Ingress
 ingress:
-  enabled: false
+  enabled: true
   className: ""
   annotations: {}
-    # kubernetes.io/ingress.class: nginx
-    # kubernetes.io/tls-acme: "true"
   hosts:
-    - host: chart-example.local
+    - host: filesender.example.com
       paths:
         - path: /
-          pathType: ImplementationSpecific
+          pathType: Prefix
   tls: []
-    # - secretName: chart-example-tls
-    #   hosts:
-    #     - chart-example.local
 
-# -- Expose the service via gateway-api HTTPRoute
-# Requires Gateway API resources and suitable controller installed within the cluster
-# (see: https://gateway-api.sigs.k8s.io/guides/)
-httpRoute:
-  # HTTPRoute enabled.
-  enabled: false
-  # HTTPRoute annotations.
-  annotations: {}
-  # Which Gateways this Route is attached to.
-  parentRefs:
-  - name: gateway
-    sectionName: http
-    # namespace: default
-  # Hostnames matching HTTP header.
-  hostnames:
-  - chart-example.local
-  # List of rules and filters applied.
-  rules:
-  - matches:
-    - path:
-        type: PathPrefix
-        value: /headers
-  #   filters: charts/filesender/values.yaml
-  #   - type: RequestHeaderModifier
-  #     requestHeaderModifier:
-  #       set:
-  #       - name: My-Overwrite-Header
-  #         value: this-is-the-only-value
-  #       remove:
-  #       - User-Agent
-  # - matches:
-  #   - path:
-  #       type: PathPrefix
-  #       value: /echo
-  #     headers:
-  #     - name: version
-  #       value: v2
+# Resources
+resources:
+  requests:
+    memory: "256Mi"
+    cpu: "100m"
+  limits:
+    memory: "512Mi"
+    cpu: "500m"
 
-resources: {}
-  # We usually recommend not to specify default resources and to leave this as a conscious
-  # choice for the user. This also increases chances charts run on environments with little
-  # resources, such as Minikube. If you do want to specify resources, uncomment the following
-  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
-  # limits:
-  #   cpu: 100m
-  #   memory: 128Mi
-  # requests:
-  #   cpu: 100m
-  #   memory: 128Mi
-
-# This is to setup the liveness and readiness probes more information can be found here: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/
+# Probes
 livenessProbe:
-  tcpSocket:
-    port: 9000
+  enabled: true
+  httpGet:
+    path: /health
+    port: 80
+  initialDelaySeconds: 30
+  periodSeconds: 10
+
 readinessProbe:
-  tcpSocket:
-    port: 9000
+  enabled: true
+  httpGet:
+    path: /health
+    port: 80
+  initialDelaySeconds: 10
+  periodSeconds: 5
 
-# This section is for setting up autoscaling more information can be found here: https://kubernetes.io/docs/concepts/workloads/autoscaling/
-autoscaling:
-  enabled: false
-  minReplicas: 1
-  maxReplicas: 100
-  targetCPUUtilizationPercentage: 80
-  # targetMemoryUtilizationPercentage: 80
-
-# Additional volumes on the output Deployment definition.
-volumes: []
-  # - name: foo
-  #   secret:
-  #     secretName: mysecret
-  #     optional: false
-
-# Additional volumeMounts on the output Deployment definition.
-volumeMounts: []
-  # - name: foo
-  #   mountPath: "/etc/foo"
-  #   readOnly: true
+# Cleanup cronjob
+cleanup:
+  enabled: true
+  schedule: "0 2 * * *"
 
 nodeSelector: {}
-
 tolerations: []
-
 affinity: {}
+

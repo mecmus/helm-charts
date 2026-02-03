@@ -40,6 +40,29 @@ spec:
           {{- end }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
+          env:
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  {{- if .Values.postgresql.external.enabled }}
+                  name: {{ .Values.postgresql.external.existingSecret | default (printf "%s-postgresql" (include "filesender.fullname" .)) }}
+                  key: {{ .Values.postgresql.external.secretKey }}
+                  {{- else }}
+                  name: {{ include "filesender.fullname" . }}-postgresql
+                  key: password
+                  {{- end }}
+            {{- if eq .Values.filesender.auth.type "oidc" }}
+            - name: OIDC_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.filesender.auth.oidc.existingSecret | default (printf "%s-oidc" (include "filesender.fullname" .)) }}
+                  key: oidc-client-id
+            - name: OIDC_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.filesender.auth.oidc.existingSecret | default (printf "%s-oidc" (include "filesender.fullname" .)) }}
+                  key: oidc-client-secret
+            {{- end }}
           ports:
             - name: http
               containerPort: {{ .Values.service.port }}
@@ -58,15 +81,19 @@ spec:
           {{- end }}
           volumeMounts:
             - name: config
-              mountPath: /var/www/html/config/config.php
+              mountPath: /opt/filesender/filesender/config/config.php
               subPath: config.php
               readOnly: true
+            - name: config
+              mountPath: /opt/filesender/filesender/config/config_private.php
+              subPath: config_private.php
+              readOnly: true
             - name: storage
-              mountPath: /var/www/html/files
+              mountPath: /opt/filesender/filesender/files
             - name: tmp
-              mountPath: /var/www/html/tmp
+              mountPath: /opt/filesender/filesender/tmp
             - name: log
-              mountPath: /var/www/html/log
+              mountPath: /opt/filesender/filesender/log
           {{- with .Values.volumeMounts }}
             {{- toYaml . | nindent 12 }}
           {{- end }}
