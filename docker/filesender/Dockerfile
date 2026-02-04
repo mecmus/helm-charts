@@ -46,16 +46,26 @@ RUN apk add --no-cache --virtual .build-deps \
     && docker-php-ext-install -j$(nproc) pdo_pgsql pgsql mbstring xml intl gd \
     && apk del .build-deps
 
-# Structure des répertoires FileSender
+# Structure des répertoires FileSender et Nginx
 RUN mkdir -p \
     /opt/filesender/filesender/files \
     /opt/filesender/filesender/tmp \
     /opt/filesender/filesender/log \
     /run/nginx \
-    && chown -R www-data:www-data /opt/filesender /run/nginx
+    /var/lib/nginx/tmp/client_body \
+    /var/lib/nginx/tmp/proxy \
+    /var/lib/nginx/tmp/fastcgi \
+    /var/lib/nginx/tmp/uwsgi \
+    /var/lib/nginx/tmp/scgi \
+    /var/log/nginx \
+    && chown -R www-data:www-data /opt/filesender \
+    && chown -R nginx:nginx /run/nginx /var/lib/nginx /var/log/nginx
 
 # Copie de FileSender avec dépendances OIDC
 COPY --from=builder --chown=www-data:www-data /build/filesender /opt/filesender/filesender
+
+# PHP-FPM config
+COPY php-fpm.conf /usr/local/etc/php-fpm.d/zz-custom.conf
 
 # Nginx config
 COPY nginx.conf /etc/nginx/nginx.conf
