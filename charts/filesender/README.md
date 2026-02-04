@@ -201,6 +201,10 @@ Deux fichiers d'exemple sont fournis pour vous aider à démarrer :
 
 ```bash
 helm install filesender-dev mecmus/filesender -f values-dev-example.yaml
+
+# Pour accéder localement via port-forward:
+kubectl port-forward svc/filesender-dev 8080:80
+# Puis ouvrir http://localhost:8080 dans votre navigateur
 ```
 
 Cette configuration utilise :
@@ -208,6 +212,9 @@ Cette configuration utilise :
 - PostgreSQL interne sans persistence
 - Pas de persistence pour les fichiers
 - Ressources minimales
+- URL configurée pour `http://filesender.local` (peut être accédée via port-forward)
+
+**Note**: Pour un environnement de développement local, utilisez `kubectl port-forward` pour accéder à l'application. L'URL `filesender.local` peut être ajoutée à votre `/etc/hosts` si nécessaire, ou simplement accédez via `localhost` après le port-forward.
 
 ### Production (OIDC Auth)
 

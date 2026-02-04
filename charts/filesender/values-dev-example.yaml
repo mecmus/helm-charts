@@ -1,5 +1,9 @@
 # Example configuration for FileSender with Fake authentication
 # This file demonstrates a development/testing configuration
+#
+# To access locally:
+#   kubectl port-forward svc/filesender-dev 8080:80
+#   Then access at http://localhost:8080
 
 replicaCount: 1
 
@@ -9,7 +13,7 @@ image:
   pullPolicy: IfNotPresent
 
 filesender:
-  siteUrl: "http://localhost:8080"
+  siteUrl: "http://filesender.local"
   siteName: "FileSender Dev"
   admin: "admin@example.com"
   adminEmail: "admin@example.com"

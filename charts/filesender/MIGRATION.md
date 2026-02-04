@@ -157,7 +157,7 @@ ingress:
 
 ```yaml
 filesender:
-  siteUrl: "http://localhost:8080"
+  siteUrl: "http://filesender.local"
   auth:
     type: "fake"
     fake:
@@ -178,6 +178,12 @@ persistence:
 ingress:
   enabled: false
 ```
+
+**Note pour le développement local**: L'URL `filesender.local` est une valeur générique. Pour accéder à l'application en local:
+```bash
+kubectl port-forward svc/filesender 8080:80
+```
+Puis ouvrez http://localhost:8080 dans votre navigateur.
 
 ### Step 3: Azure AD Configuration (for OIDC)
 
