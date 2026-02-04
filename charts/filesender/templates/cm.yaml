@@ -67,6 +67,11 @@ data:
 
   config_private.php: |
     <?php
+    // Private configuration (credentials loaded from environment)
+    if (!isset($config) || !is_array($config)) {
+        $config = array();
+    }
+    
     {{- if eq .Values.filesender.auth.type "oidc" }}
     // OIDC credentials - loaded from environment variables
     $config['auth_sp_oidc_client_id'] = getenv('OIDC_CLIENT_ID');
