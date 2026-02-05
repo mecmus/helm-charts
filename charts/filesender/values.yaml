@@ -106,11 +106,34 @@ simplesamlphp:
         email: "testadmin@example.com"
         uid: "testadmin"
   
-  # Configuration IdP
+  # Configuration IdP externe (ex: Microsoft Entra ID, ADFS, etc.)
+  # Pour activer, mettre localUsers.enabled à false
   idp:
+    # Entity ID de l'IdP (ex: https://sts.windows.net/<tenant-id>/ pour Entra ID)
     entityId: ""
+    # URL du service SSO (ex: https://login.microsoftonline.com/<tenant-id>/saml2)
     ssoUrl: ""
+    # Certificat de signature SAML de l'IdP (format PEM, une seule ligne)
     certificate: ""
+    # URL des métadonnées de l'IdP (optionnel, alternative au certificat)
+    metadataUrl: ""
+  
+  # Configuration spécifique pour Microsoft Entra ID
+  entraId:
+    # Activer l'intégration Entra ID (désactive localUsers automatiquement)
+    enabled: false
+    # Tenant ID Azure (GUID)
+    tenantId: ""
+    # Application (client) ID
+    clientId: ""
+    # Attributs mappés depuis Entra ID
+    attributes:
+      # Nom de l'attribut pour l'email dans les claims Entra ID
+      email: "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress"
+      # Nom de l'attribut pour le nom d'utilisateur
+      name: "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name"
+      # Nom de l'attribut pour l'identifiant unique
+      uid: "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier"
 
 # Configuration PostgreSQL
 postgresql:

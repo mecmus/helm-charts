@@ -51,8 +51,9 @@ data:
     $config = [
         'admin' => ['core:AdminPassword'],
         
+        {{- if or .Values.simplesamlphp.localUsers.enabled (not .Values.simplesamlphp.entraId.enabled) }}
         {{- if .Values.simplesamlphp.localUsers.enabled }}
-        // 1. La source "Visible" par Filesender (Type SAML)
+        // Mode local pour tests - La source "Visible" par Filesender (Type SAML)
         '{{ .Values.simplesamlphp.authenticationSource }}' => [
             'saml:SP',
             'entityID' => '{{ .Values.filesender.siteUrl }}/simplesaml/module.php/saml/sp/metadata.php/{{ .Values.simplesamlphp.authenticationSource }}',
@@ -75,11 +76,31 @@ data:
             {{- end }}
         ],
         {{- else }}
-        // Mode PROD standard
+        // Mode PROD - IdP externe standard
         '{{ .Values.simplesamlphp.authenticationSource }}' => [
             'saml:SP',
             'entityID' => '{{ .Values.filesender.siteUrl }}/simplesaml/module.php/saml/sp/metadata.php/{{ .Values.simplesamlphp.authenticationSource }}',
             'idp' => '{{ .Values.simplesamlphp.idp.entityId }}',
+            'discoURL' => null,
+        ],
+        {{- end }}
+        {{- else }}
+        // Mode Microsoft Entra ID (Azure AD)
+        '{{ .Values.simplesamlphp.authenticationSource }}' => [
+            'saml:SP',
+            'entityID' => '{{ .Values.filesender.siteUrl }}',
+            'idp' => 'https://sts.windows.net/{{ .Values.simplesamlphp.entraId.tenantId }}/',
+            'discoURL' => null,
+            {{- if .Values.simplesamlphp.entraId.attributes }}
+            // Mapping des attributs Entra ID vers attributs FileSender
+            'authproc' => [
+                // Convertit les claims Entra ID en attributs SAML standard
+                [
+                    'class' => 'core:AttributeMap',
+                    'oid2name',
+                ],
+            ],
+            {{- end }}
         ],
         {{- end }}
     ];
@@ -98,6 +119,7 @@ data:
   saml20-idp-remote.php: |
     <?php
     {{- if .Values.simplesamlphp.localUsers.enabled }}
+    // Configuration IdP local pour tests
     $metadata['urn:x-simplesamlphp:local-idp'] = [
         'name' => ['en' => 'Local Test IdP'],
         'description' => 'Local IdP for testing',
@@ -105,13 +127,29 @@ data:
         'SingleLogoutService'  => '{{ .Values.filesender.siteUrl }}/simplesaml/saml2/idp/SingleLogoutService.php',
         'certificate' => 'server.crt',
     ];
-    {{- end }}
-
-    {{- if and (not .Values.simplesamlphp.localUsers.enabled) .Values.simplesamlphp.idp.entityId }}
+    {{- else if .Values.simplesamlphp.entraId.enabled }}
+    // Configuration Microsoft Entra ID (Azure AD)
+    $metadata['https://sts.windows.net/{{ .Values.simplesamlphp.entraId.tenantId }}/'] = [
+        'name' => ['en' => 'Microsoft Entra ID', 'fr' => 'Microsoft Entra ID'],
+        'description' => 'Microsoft Entra ID SAML Identity Provider',
+        'SingleSignOnService' => 'https://login.microsoftonline.com/{{ .Values.simplesamlphp.entraId.tenantId }}/saml2',
+        'SingleLogoutService' => 'https://login.microsoftonline.com/{{ .Values.simplesamlphp.entraId.tenantId }}/saml2',
+        {{- if .Values.simplesamlphp.idp.certificate }}
+        'certificate' => '{{ .Values.simplesamlphp.idp.certificate }}',
+        {{- end }}
+        {{- if .Values.simplesamlphp.idp.metadataUrl }}
+        // Alternative: utiliser l'URL de métadonnées
+        // 'metadata-set' => 'saml20-idp-remote',
+        {{- end }}
+    ];
+    {{- else if .Values.simplesamlphp.idp.entityId }}
+    // Configuration IdP externe générique
     $metadata['{{ .Values.simplesamlphp.idp.entityId }}'] = [
         'SingleSignOnService' => '{{ .Values.simplesamlphp.idp.ssoUrl }}',
         'SingleLogoutService' => '',
+        {{- if .Values.simplesamlphp.idp.certificate }}
         'certificate' => '{{ .Values.simplesamlphp.idp.certificate }}',
+        {{- end }}
     ];
     {{- end }}
   saml20-sp-remote.php: |
