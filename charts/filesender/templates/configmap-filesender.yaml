@@ -42,9 +42,15 @@ data:
     
     // Paths configuration
     $config['tmp_path'] = '{{ .Values.filesender.paths.tmp | default "/opt/filesender/filesender/tmp/" }}';
-    $config['log_facilities'] = [
-        'path' => '{{ .Values.filesender.paths.log | default "/opt/filesender/filesender/log/" }}',
-    ];
+    
+    // Logging configuration
+    $config['log_facilities'] = array(
+        array(
+            'type' => 'file',
+            'path' => '{{ .Values.filesender.paths.log | default "/opt/filesender/filesender/log/" }}',
+            'rotate' => 'hourly'
+        )
+    );
     
     // Session configuration
     $config['session_cookie_path'] = '{{ .Values.filesender.sessionCookiePath | default "/" }}';
