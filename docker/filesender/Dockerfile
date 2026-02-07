@@ -22,6 +22,11 @@ RUN apk add --no-cache --virtual .build-deps \
     tar
 
 # Installation des extensions PHP requises
+# - pdo_pgsql & pgsql: Support PostgreSQL pour FileSender et sessions SimpleSAMLphp
+# - mbstring: Manipulation de chaînes multi-octets
+# - xml & dom: Traitement XML pour SAML
+# - intl: Support internationalization
+# - gd: Traitement d'images
 RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install -j$(nproc) \
         pdo_pgsql \
@@ -68,6 +73,7 @@ RUN apk add --no-cache \
     icu-dev \
     libxml2-dev \
     oniguruma-dev \
+    # Installation des extensions PHP (nécessaires pour PostgreSQL et SAML)
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install -j$(nproc) \
         pdo_pgsql \
@@ -76,6 +82,7 @@ RUN apk add --no-cache \
         xml \
         intl \
         gd \
+    # Nettoyage des dépendances de build pour réduire la taille de l'image
     && apk del zlib-dev postgresql-dev libpng-dev libjpeg-turbo-dev \
         freetype-dev icu-dev libxml2-dev oniguruma-dev
 
