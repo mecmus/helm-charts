@@ -46,9 +46,9 @@ data:
     // Logging configuration
     $config['log_facilities'] = array(
         array(
-            'type' => 'file',
-            'path' => '{{ .Values.filesender.paths.log | default "/opt/filesender/filesender/log/" }}',
-            'rotate' => 'hourly'
+            'type' => 'error_log',
+            'output' => 'json',    // logs structurés pour Loki
+            'level' => 'info',
         )
     );
     
