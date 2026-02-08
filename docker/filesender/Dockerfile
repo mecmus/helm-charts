@@ -109,8 +109,19 @@ COPY --from=builder --chown=www-data:www-data /build/simplesaml /opt/filesender/
 
 # Configuration PHP-FPM
 RUN sed -i 's/listen = 127.0.0.1:9000/listen = 127.0.0.1:9000/' /usr/local/etc/php-fpm.d/www.conf \
-    && echo "php_admin_value[error_log] = /var/www/log/php-fpm.log" >> /usr/local/etc/php-fpm.d/www.conf \
-    && echo "php_admin_flag[log_errors] = on" >> /usr/local/etc/php-fpm.d/www.conf
+    && echo "php_admin_value[error_log] = /proc/self/fd/2" >> /usr/local/etc/php-fpm.d/www.conf \
+    && echo "php_admin_flag[log_errors] = on" >> /usr/local/etc/php-fpm.d/www.conf \
+    && echo "php_admin_flag[display_errors] = off" >> /usr/local/etc/php-fpm.d/www.conf
+
+# php.ini personnalisé - CRITIQUE pour éviter "headers already sent"
+COPY php.ini /usr/local/etc/php/php.ini
+
+# Assurer la writabilité du répertoire de sessions
+RUN chown -R www-data:www-data /var/www/tmp
+
+# Logs Nginx → stdout/stderr pour Loki/Kubernetes
+RUN ln -sf /dev/stdout /var/log/nginx/filesender-access.log \
+    && ln -sf /dev/stderr /var/log/nginx/filesender-error.log
 
 # Configuration Nginx (sera remplacée par ConfigMap en production)
 COPY nginx.conf /etc/nginx/nginx.conf
