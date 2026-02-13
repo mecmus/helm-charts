@@ -1,5 +1,5 @@
 # Stage 1: Builder - Compilation et collecte des dépendances
-FROM dhi.io/php:8.5.0-dev AS builder
+FROM dhi.io/php:8.5.3-dev AS builder
 
 USER root
 
@@ -46,7 +46,7 @@ RUN git clone --depth 1 --branch master3 https://github.com/filesender/filesende
     chown -R 1000:1000 filesender simplesaml
 
 # Stage 2: Runtime - Image sécurisée Docker Hardened
-FROM dhi.io/php:8.5.0-fpm
+FROM dhi.io/php:8.5.3-fpm
 
 # Information sur la version
 ARG FILESENDER_VERSION=3.3
