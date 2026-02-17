@@ -96,7 +96,9 @@ Les variables suivantes sont disponibles pour configurer l'authentification OIDC
 
 ## Exemple de configuration OIDC
 
-Pour configurer l'authentification OIDC avec Keycloak par exemple :
+### Configuration avec Keycloak
+
+Pour configurer l'authentification OIDC avec Keycloak :
 
 ```yaml
 sharelatex:
@@ -107,6 +109,50 @@ sharelatex:
     OIDC_CALLBACK_URL: "https://plmlatex.example.com/oauth/callback"
     OIDC_LOGOUT_URL: "https://keycloak.example.com/auth/realms/myrealm/protocol/openid-connect/logout"
 ```
+
+### Configuration avec Microsoft Entra ID (Azure AD)
+
+Pour configurer l'authentification OIDC avec Microsoft Entra ID :
+
+1. **Enregistrer une application dans Entra ID** :
+   - Accédez au portail Azure > Microsoft Entra ID > Inscriptions d'applications
+   - Créez une nouvelle inscription d'application
+   - Notez l'**ID d'application (client)** et l'**ID de l'annuaire (locataire)**
+   - Dans **Certificats et secrets**, créez un nouveau secret client et notez sa valeur
+
+2. **Configurer l'URI de redirection** :
+   - Dans les paramètres d'authentification de votre application
+   - Ajoutez l'URI : `https://votre-domaine.com/oauth/callback`
+
+3. **Configuration dans le chart Helm** :
+
+```yaml
+sharelatex:
+  env:
+    # URL du serveur OIDC (remplacez {tenant-id} par votre ID de locataire)
+    OIDC_SERVER: "https://login.microsoftonline.com/{tenant-id}/v2.0"
+    # ID d'application (client) depuis Entra ID
+    OIDC_CLIENTID: "votre-application-id"
+    # Secret client généré dans Entra ID
+    OIDC_SECRET: "votre-secret-client"
+    # URL de callback (doit correspondre à l'URI de redirection enregistrée)
+    OIDC_CALLBACK_URL: "https://votre-domaine.com/oauth/callback"
+    # URL de déconnexion Entra ID
+    OIDC_LOGOUT_URL: "https://login.microsoftonline.com/{tenant-id}/oauth2/v2.0/logout"
+    # Scopes demandés (openid et profile sont recommandés)
+    OIDC_SCOPE: "openid profile email"
+    # Mappage des claims Entra ID
+    OIDC_EMAIL: "email"
+    OIDC_FIRSTNAME: "given_name"
+    OIDC_LASTNAME: "family_name"
+    OIDC_PREFERRED_ID: "preferred_username"
+```
+
+**Notes importantes pour Entra ID** :
+- L'URL du serveur OIDC peut aussi utiliser le nom de domaine du tenant : `https://login.microsoftonline.com/{nom-domaine}.onmicrosoft.com/v2.0`
+- Pour obtenir le Tenant ID : Portail Azure > Microsoft Entra ID > Vue d'ensemble
+- Le scope `email` nécessite que l'API Microsoft Graph soit autorisée dans les permissions de l'application
+- Assurez-vous que les claims `email`, `given_name`, et `family_name` sont inclus dans le token ID en configurant les revendications optionnelles si nécessaire
 
 ## Architecture
 
