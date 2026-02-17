@@ -1,0 +1,78 @@
+replicaCount: 1
+
+sharelatex:
+  image:
+    repository: registry.plmlab.math.cnrs.fr/plmlatex/overleaf/sharelatex
+    tag: latest
+    pullPolicy: IfNotPresent
+  containerPort: 8080
+  service:
+    type: ClusterIP
+    port: 80
+  env:
+    OIDC_TITLE: "connexion avec OIDC"
+    OIDC_SCOPE: "openid profile"
+    OIDC_AUTH_METHOD: "client_secret_basic"
+    OIDC_EMAIL: "email"
+    OIDC_FIRSTNAME: "given_name"
+    OIDC_LASTNAME: "family_name"
+    OIDC_PREFERRED_ID: "preferred_username"
+    OIDC_EMAIL_UPDATE: "false"
+    # Variables OIDC optionnelles - à configurer selon vos besoins
+    OIDC_SERVER: ""
+    OIDC_CLIENTID: ""
+    OIDC_SECRET: ""
+    OIDC_CALLBACK_URL: ""
+    OIDC_LOGOUT_URL: ""
+    OIDC_DATAS: ""
+    # Variables ShareLaTeX
+    SHARELATEX_APP_NAME: "Overleaf Community Edition"
+    ENABLED_LINKED_FILE_TYPES: "project_file,project_output_file"
+    ENABLE_CONVERSIONS: "true"
+    EMAIL_CONFIRMATION_DISABLED: "true"
+    TEXMFVAR: "/var/lib/sharelatex/tmp/texmf-var"
+
+mongo:
+  image:
+    repository: mongo
+    tag: "4.4"
+    pullPolicy: IfNotPresent
+  service:
+    port: 27017
+
+redis:
+  image:
+    repository: redis
+    tag: "5"
+    pullPolicy: IfNotPresent
+  service:
+    port: 6379
+
+ingress:
+  enabled: false
+  host: plmlatex.example.com
+  annotations:
+    cert-manager.io/cluster-issuer: le-prod
+  tls:
+    - hosts:
+        - plmlatex.example.com
+      secretName: plmlatex-tls
+
+persistence:
+  sharelatex:
+    enabled: true
+    size: 10Gi
+    accessModes:
+      - ReadWriteOnce
+  mongo:
+    enabled: true
+    size: 10Gi
+    accessModes:
+      - ReadWriteOnce
+  redis:
+    enabled: true
+    size: 1Gi
+    accessModes:
+      - ReadWriteOnce
+
+resources: {}
