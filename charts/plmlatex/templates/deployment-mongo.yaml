@@ -30,7 +30,7 @@ spec:
               command:
                 - sh
                 - -c
-                # Note: Utilise 'mongo' shell (MongoDB 4.4). Pour MongoDB 5.0+, utiliser 'mongosh'.
+                # Note: Utilise le shell 'mongo' (MongoDB 4.4). Pour MongoDB 5.0+, utiliser 'mongosh'.
                 - "echo 'db.stats().ok' | mongo localhost:27017/test --quiet"
             initialDelaySeconds: 30
             periodSeconds: 10
@@ -41,7 +41,7 @@ spec:
               command:
                 - sh
                 - -c
-                # Note: Utilise 'mongo' shell (MongoDB 4.4). Pour MongoDB 5.0+, utiliser 'mongosh'.
+                # Note: Utilise le shell 'mongo' (MongoDB 4.4). Pour MongoDB 5.0+, utiliser 'mongosh'.
                 - "echo 'db.stats().ok' | mongo localhost:27017/test --quiet"
             initialDelaySeconds: 10
             periodSeconds: 10
