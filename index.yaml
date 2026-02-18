@@ -81,4 +81,15 @@ entries:
     urls:
     - https://github.com/mecmus/helm-charts/releases/download/filesender-3.3.0/filesender-3.3.0.tgz
     version: 3.3.0
-generated: "2026-01-18T11:56:03.829854643Z"
+  plmlatex:
+  - apiVersion: v2
+    appVersion: latest
+    created: "2026-02-18T08:18:14.328996626Z"
+    description: A Helm chart for deploying PLMLatex (Overleaf Community Edition)
+      with MongoDB and Redis.
+    digest: a1dcde1a31eb3a98c7269717aeb2c9623a4861fc8146dd696be17c28b748c291
+    name: plmlatex
+    urls:
+    - https://github.com/mecmus/helm-charts/releases/download/plmlatex-0.1.0/plmlatex-0.1.0.tgz
+    version: 0.1.0
+generated: "2026-02-18T08:18:14.329014761Z"
