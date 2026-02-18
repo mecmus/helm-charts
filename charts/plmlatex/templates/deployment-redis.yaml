@@ -1,0 +1,37 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "plmlatex.fullname" . }}-redis
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: {{ include "plmlatex.name" . }}-redis
+  template:
+    metadata:
+      labels:
+        app: {{ include "plmlatex.name" . }}-redis
+    spec:
+      containers:
+        - name: redis
+          image: "{{ .Values.redis.image.repository }}:{{ .Values.redis.image.tag }}"
+          imagePullPolicy: {{ .Values.redis.image.pullPolicy }}
+          ports:
+            - name: redis
+              containerPort: {{ .Values.redis.service.port }}
+              protocol: TCP
+          volumeMounts:
+            - name: redis-data
+              mountPath: /data
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+      volumes:
+        - name: redis-data
+          {{- if .Values.persistence.redis.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ include "plmlatex.fullname" . }}-redis-data
+          {{- else }}
+          emptyDir: {}
+          {{- end }}

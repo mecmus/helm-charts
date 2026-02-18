@@ -1,0 +1,44 @@
+{{- if .Values.persistence.sharelatex.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "plmlatex.fullname" . }}-sharelatex-data
+spec:
+  accessModes:
+    {{- range .Values.persistence.sharelatex.accessModes }}
+    - {{ . }}
+    {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.persistence.sharelatex.size }}
+{{- end }}
+---
+{{- if .Values.persistence.mongo.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "plmlatex.fullname" . }}-mongo-data
+spec:
+  accessModes:
+    {{- range .Values.persistence.mongo.accessModes }}
+    - {{ . }}
+    {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.persistence.mongo.size }}
+{{- end }}
+---
+{{- if .Values.persistence.redis.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "plmlatex.fullname" . }}-redis-data
+spec:
+  accessModes:
+    {{- range .Values.persistence.redis.accessModes }}
+    - {{ . }}
+    {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.persistence.redis.size }}
+{{- end }}

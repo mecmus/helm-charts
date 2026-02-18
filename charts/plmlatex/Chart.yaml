@@ -1,0 +1,5 @@
+apiVersion: v2
+name: plmlatex
+description: A Helm chart for deploying PLMLatex (Overleaf Community Edition) with MongoDB and Redis.
+version: 0.1.0
+appVersion: "latest"

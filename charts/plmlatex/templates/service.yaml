@@ -1,0 +1,41 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "plmlatex.fullname" . }}-sharelatex
+spec:
+  type: {{ .Values.sharelatex.service.type }}
+  ports:
+    - name: http
+      port: {{ .Values.sharelatex.service.port }}
+      targetPort: {{ .Values.sharelatex.containerPort }}
+      protocol: TCP
+  selector:
+    app: {{ include "plmlatex.name" . }}-sharelatex
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "plmlatex.fullname" . }}-mongo
+spec:
+  type: ClusterIP
+  ports:
+    - name: mongo
+      port: {{ .Values.mongo.service.port }}
+      targetPort: {{ .Values.mongo.service.port }}
+      protocol: TCP
+  selector:
+    app: {{ include "plmlatex.name" . }}-mongo
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "plmlatex.fullname" . }}-redis
+spec:
+  type: ClusterIP
+  ports:
+    - name: redis
+      port: {{ .Values.redis.service.port }}
+      targetPort: {{ .Values.redis.service.port }}
+      protocol: TCP
+  selector:
+    app: {{ include "plmlatex.name" . }}-redis
