@@ -35,7 +35,7 @@ sharelatex:
 mongo:
   image:
     repository: mongo
-    tag: "4.4"
+    tag: "8.2"
     pullPolicy: IfNotPresent
   service:
     port: 27017
