@@ -36,7 +36,7 @@ RUN for ext in pdo_mysql pdo_pgsql gd zip soap bcmath exif; do \
     done
 
 # Préparation de l'application
-ARG FILESENDER_VERSION=3.3
+ARG FILESENDER_VERSION=3.5
 ARG SIMPLESAMLPHP_VERSION=2.2.3
 WORKDIR /build/app
 RUN git clone --depth 1 --branch master3 https://github.com/filesender/filesender.git filesender && \
@@ -49,7 +49,7 @@ RUN git clone --depth 1 --branch master3 https://github.com/filesender/filesende
 FROM dhi.io/php:8.5.0-fpm
 
 # Information sur la version
-ARG FILESENDER_VERSION=3.3
+ARG FILESENDER_VERSION=3.5
 
 # Metadata
 LABEL org.opencontainers.image.source="https://github.com/mecmus/helm-charts" \
