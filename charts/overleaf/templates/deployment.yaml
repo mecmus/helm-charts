@@ -1,0 +1,132 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "overleaf.fullname" . }}
+  labels:
+    {{- include "overleaf.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "overleaf.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "overleaf.labels" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: overleaf
+          {{- with .Values.securityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 80
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 60
+            periodSeconds: 20
+            failureThreshold: 6
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            failureThreshold: 3
+          env:
+            - name: SHARELATEX_APP_NAME
+              value: {{ .Values.overleaf.appName | quote }}
+            - name: SHARELATEX_SITE_URL
+              value: {{ .Values.overleaf.siteUrl | quote }}
+            - name: SHARELATEX_NAV_TITLE
+              value: {{ .Values.overleaf.navTitle | quote }}
+            - name: SHARELATEX_ADMIN_EMAIL
+              value: {{ .Values.overleaf.adminEmail | quote }}
+            - name: SHARELATEX_MONGO_URL
+              value: {{ include "overleaf.mongodbUrl" . | quote }}
+            - name: SHARELATEX_REDIS_HOST
+              value: {{ include "overleaf.redisHost" . | quote }}
+            - name: SHARELATEX_REDIS_PORT
+              value: {{ include "overleaf.redisPort" . | quote }}
+            - name: SHARELATEX_BEHIND_PROXY
+              value: {{ .Values.overleaf.behindProxy | quote }}
+            - name: SHARELATEX_SECURE_COOKIE
+              value: {{ .Values.overleaf.secureCookie | quote }}
+            - name: SHARELATEX_ALLOW_PUBLIC_ACCESS
+              value: {{ .Values.overleaf.allowPublicAccess | quote }}
+            - name: SHARELATEX_ALLOW_ANONYMOUS_READ_AND_WRITE_SHARING
+              value: {{ .Values.overleaf.allowAnonymousReadAndWriteSharing | quote }}
+            {{- if .Values.smtp.host }}
+            - name: SHARELATEX_EMAIL_SMTP_HOST
+              value: {{ .Values.smtp.host | quote }}
+            - name: SHARELATEX_EMAIL_SMTP_PORT
+              value: {{ .Values.smtp.port | toString | quote }}
+            - name: SHARELATEX_EMAIL_SMTP_SECURE
+              value: {{ .Values.smtp.secure | quote }}
+            {{- end }}
+            {{- if .Values.smtp.fromAddress }}
+            - name: SHARELATEX_EMAIL_FROM_ADDRESS
+              value: {{ .Values.smtp.fromAddress | quote }}
+            {{- end }}
+            {{- if .Values.smtp.customFooter }}
+            - name: SHARELATEX_CUSTOM_EMAIL_FOOTER
+              value: {{ .Values.smtp.customFooter | quote }}
+            {{- end }}
+            {{- if or .Values.smtp.user .Values.smtp.existingSecret }}
+            - name: SHARELATEX_EMAIL_SMTP_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "overleaf.smtpSecretName" . }}
+                  key: {{ .Values.smtp.existingSecretKeys.user }}
+            - name: SHARELATEX_EMAIL_SMTP_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "overleaf.smtpSecretName" . }}
+                  key: {{ .Values.smtp.existingSecretKeys.password }}
+            {{- end }}
+            {{- range $key, $value := .Values.overleaf.extraEnv }}
+            - name: {{ $key }}
+              value: {{ $value | quote }}
+            {{- end }}
+          {{- with .Values.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/sharelatex
+      volumes:
+        - name: data
+          {{- if .Values.persistence.data.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ .Values.persistence.data.existingClaim | default (printf "%s-data" (include "overleaf.fullname" .)) }}
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

@@ -1,0 +1,32 @@
+overleaf:
+  siteUrl: "https://overleaf.example.com"
+  appName: "Overleaf - Mon Organisation"
+  adminEmail: "admin@example.com"
+
+oauth2Proxy:
+  enabled: true
+  provider: "oidc"
+  oidcIssuerUrl: "https://login.microsoftonline.com/YOUR_TENANT_ID/v2.0"
+  clientId: "YOUR_CLIENT_ID"
+  clientSecret: "YOUR_CLIENT_SECRET"
+  cookieSecret: "GENERATE_WITH_python3_-c_import_os_base64..."
+  emailDomains:
+    - "example.com"
+
+ingress:
+  enabled: true
+  hosts:
+    - host: overleaf.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: overleaf-tls
+      hosts:
+        - overleaf.example.com
+
+mongodb:
+  enabled: true
+
+redis:
+  enabled: true

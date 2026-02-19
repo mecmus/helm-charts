@@ -1,0 +1,190 @@
+# -- Global settings
+replicaCount: 1
+
+# -- Overleaf image configuration
+image:
+  repository: sharelatex/sharelatex
+  tag: "6.1.1"
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+# -- Overleaf application settings
+overleaf:
+  # SHARELATEX_SITE_URL - required
+  siteUrl: "https://overleaf.example.com"
+  appName: "Overleaf"
+  navTitle: "Overleaf"
+  adminEmail: "admin@example.com"
+  # Allow public link sharing
+  allowPublicAccess: "true"
+  allowAnonymousReadAndWriteSharing: "true"
+  # Behind proxy settings (important for kubernetes)
+  behindProxy: "true"
+  secureCookie: "true"
+  # Extra environment variables as key-value pairs
+  extraEnv: {}
+
+# -- SMTP Configuration
+smtp:
+  host: ""
+  port: 587
+  secure: "false"
+  user: ""
+  password: ""
+  # Reference to an existing secret for SMTP credentials
+  existingSecret: ""
+  existingSecretKeys:
+    user: "smtp-user"
+    password: "smtp-password"
+  fromAddress: ""
+  customFooter: ""
+
+# -- OAuth2 Proxy configuration (OIDC authentication)
+oauth2Proxy:
+  enabled: true
+  image:
+    repository: quay.io/oauth2-proxy/oauth2-proxy
+    tag: "v7.7.1"
+    pullPolicy: IfNotPresent
+
+  # OIDC provider configuration
+  provider: "oidc"
+  # For Entra ID: https://login.microsoftonline.com/<TENANT_ID>/v2.0
+  # For Keycloak: https://keycloak.example.com/realms/<REALM>
+  oidcIssuerUrl: ""
+  clientId: ""
+  clientSecret: ""
+  # Reference to existing secret for OIDC credentials
+  existingSecret: ""
+  existingSecretKeys:
+    clientId: "client-id"
+    clientSecret: "client-secret"
+    cookieSecret: "cookie-secret"
+
+  # Cookie secret (32 bytes, base64 encoded). Generate with:
+  # python3 -c 'import os,base64; print(base64.urlsafe_b64encode(os.urandom(32)).decode())'
+  cookieSecret: ""
+
+  # Allowed email domains. Use ["*"] to allow all.
+  emailDomains:
+    - "*"
+
+  # OAuth2 scopes
+  scope: "openid email profile"
+
+  # Pass auth headers to upstream (Overleaf)
+  setXAuthRequest: true
+  passAuthHeaders: true
+  passAccessToken: false
+
+  # Cookie settings
+  cookieName: "_oauth2_proxy"
+  cookieExpire: "168h"
+  cookieRefresh: "60m"
+
+  # Extra arguments to oauth2-proxy
+  extraArgs: []
+
+  # Resource requests/limits
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 128Mi
+
+# -- Service configuration
+service:
+  type: ClusterIP
+  port: 80
+
+# -- Ingress configuration
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    nginx.ingress.kubernetes.io/proxy-body-size: "50m"
+  hosts:
+    - host: overleaf.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: overleaf-tls
+      hosts:
+        - overleaf.example.com
+
+# -- Persistence
+persistence:
+  data:
+    enabled: true
+    size: 10Gi
+    storageClass: ""
+    accessModes:
+      - ReadWriteOnce
+    existingClaim: ""
+
+# -- MongoDB configuration
+mongodb:
+  enabled: true
+  # When enabled, uses bitnami/mongodb subchart
+  # When disabled, provide external connection string
+  auth:
+    enabled: false
+  persistence:
+    enabled: true
+    size: 8Gi
+    storageClass: ""
+  # External MongoDB (used when mongodb.enabled=false)
+  external:
+    url: ""
+    # e.g. "mongodb://mongo-host:27017/sharelatex"
+
+# -- Redis configuration
+redis:
+  enabled: true
+  # When enabled, uses bitnami/redis subchart
+  # When disabled, provide external connection details
+  auth:
+    enabled: false
+  master:
+    persistence:
+      enabled: true
+      size: 2Gi
+      storageClass: ""
+  replica:
+    replicaCount: 0
+  # External Redis (used when redis.enabled=false)
+  external:
+    host: ""
+    port: 6379
+    password: ""
+
+# -- Resource requests and limits for Overleaf
+resources:
+  requests:
+    cpu: 500m
+    memory: 1Gi
+  limits:
+    cpu: 2
+    memory: 4Gi
+
+# -- Node selector
+nodeSelector: {}
+
+# -- Tolerations
+tolerations: []
+
+# -- Affinity
+affinity: {}
+
+# -- Pod security context
+podSecurityContext: {}
+
+# -- Container security context
+securityContext: {}
