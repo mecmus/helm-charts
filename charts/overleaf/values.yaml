@@ -3,7 +3,7 @@ replicaCount: 1
 
 # -- Overleaf image configuration
 image:
-  repository: sharelatex/sharelatex
+  repository: overleaf/overleaf
   tag: "6.1.1"
   pullPolicy: IfNotPresent
 
@@ -13,7 +13,7 @@ fullnameOverride: ""
 
 # -- Overleaf application settings
 overleaf:
-  # SHARELATEX_SITE_URL - required
+  # OVERLEAF_SITE_URL - required
   siteUrl: "https://overleaf.example.com"
   appName: "Overleaf"
   navTitle: "Overleaf"

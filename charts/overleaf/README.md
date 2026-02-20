@@ -26,7 +26,7 @@ Ingress (nginx + cert-manager TLS)
 ```
 
 - **oauth2-proxy** gère l'authentification OIDC et transmet les headers d'identité à Overleaf.
-- **Overleaf CE** utilise l'image officielle `sharelatex/sharelatex`.
+- **Overleaf CE** utilise l'image officielle `overleaf/overleaf`.
 - **MongoDB** et **Redis** peuvent être déployés directement (images officielles) ou configurés comme services externes.
 
 ---
@@ -203,7 +203,7 @@ redis:
 | Paramètre | Description | Défaut |
 |-----------|-------------|--------|
 | `replicaCount` | Nombre de réplicas Overleaf | `1` |
-| `image.repository` | Image Docker Overleaf | `sharelatex/sharelatex` |
+| `image.repository` | Image Docker Overleaf | `overleaf/overleaf` |
 | `image.tag` | Tag de l'image | `6.1.1` |
 | `image.pullPolicy` | Politique de téléchargement | `IfNotPresent` |
 | `overleaf.siteUrl` | URL publique du site (requis) | `https://overleaf.example.com` |
