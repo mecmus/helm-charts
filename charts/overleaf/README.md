@@ -4,7 +4,7 @@
 
 Ce chart Helm déploie **Overleaf Community Edition** (v6.1.1) sur Kubernetes avec une authentification OIDC via **oauth2-proxy**. Il est compatible avec les fournisseurs d'identité **Microsoft Entra ID (Azure AD)** et **Keycloak** (et tout fournisseur OIDC standard).
 
-Le chart inclut optionnellement MongoDB (image officielle `mongo:7`) et Redis (image officielle `redis:7`) déployés directement, ou peut s'intégrer à des instances externes.
+Le chart inclut optionnellement MongoDB (image officielle `mongo:8`) et Redis (image officielle `redis:7`) déployés directement, ou peut s'intégrer à des instances externes.
 
 ---
 
@@ -16,17 +16,17 @@ Utilisateur
     ▼
 Ingress (nginx + cert-manager TLS)
     │
-    ├──► /oauth2  ─────────────► oauth2-proxy (OIDC)
-    │                                  │
-    │                            Entra ID / Keycloak
+    ▼
+oauth2-proxy (OIDC)
+    │                 ↔  Entra ID / Keycloak
+    ▼
+Overleaf CE
     │
-    └──► /  (auth_request) ──► oauth2-proxy ──► Overleaf CE
-                                                      │
-                                              MongoDB + Redis
+MongoDB + Redis
 ```
 
-- **oauth2-proxy** gère l'authentification OIDC et transmet les headers d'identité à Overleaf.
-- **Overleaf CE** utilise l'image officielle `overleaf/overleaf`.
+- **oauth2-proxy** sert de reverse proxy : il gère l'authentification OIDC et transmet les requêtes authentifiées à Overleaf.
+- **Overleaf CE** utilise l'image officielle `sharelatex/sharelatex`.
 - **MongoDB** et **Redis** peuvent être déployés directement (images officielles) ou configurés comme services externes.
 
 ---
@@ -161,7 +161,7 @@ helm install overleaf mecmus/overleaf \
 
 ### Utiliser les instances intégrées (par défaut)
 
-MongoDB (`mongo:7`) et Redis (`redis:7`) sont déployés directement dans le cluster à partir des images officielles.
+MongoDB (`mongo:8`) et Redis (`redis:7`) sont déployés directement dans le cluster à partir des images officielles.
 
 ```yaml
 mongodb:
@@ -203,7 +203,7 @@ redis:
 | Paramètre | Description | Défaut |
 |-----------|-------------|--------|
 | `replicaCount` | Nombre de réplicas Overleaf | `1` |
-| `image.repository` | Image Docker Overleaf | `overleaf/overleaf` |
+| `image.repository` | Image Docker Overleaf | `sharelatex/sharelatex` |
 | `image.tag` | Tag de l'image | `6.1.1` |
 | `image.pullPolicy` | Politique de téléchargement | `IfNotPresent` |
 | `overleaf.siteUrl` | URL publique du site (requis) | `https://overleaf.example.com` |

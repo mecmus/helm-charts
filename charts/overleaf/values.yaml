@@ -3,7 +3,7 @@ replicaCount: 1
 
 # -- Overleaf image configuration
 image:
-  repository: overleaf/overleaf
+  repository: sharelatex/sharelatex
   tag: "6.1.1"
   pullPolicy: IfNotPresent
 
@@ -136,7 +136,7 @@ mongodb:
   # Overleaf transaction support). When disabled, provide an external URL.
   image:
     repository: mongo
-    tag: "7"
+    tag: "8"
     pullPolicy: IfNotPresent
   persistence:
     enabled: true

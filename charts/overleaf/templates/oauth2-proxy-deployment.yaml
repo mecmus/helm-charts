@@ -29,7 +29,7 @@ spec:
             - --provider={{ .Values.oauth2Proxy.provider }}
             - --oidc-issuer-url={{ .Values.oauth2Proxy.oidcIssuerUrl }}
             - --redirect-url={{ .Values.overleaf.siteUrl }}/oauth2/callback
-            - --upstream=static://202
+            - --upstream=http://{{ include "overleaf.fullname" . }}:{{ .Values.service.port }}
             - --http-address=0.0.0.0:4180
             {{- range .Values.oauth2Proxy.emailDomains }}
             - --email-domain={{ . }}
