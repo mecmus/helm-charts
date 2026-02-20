@@ -109,7 +109,7 @@ spec:
           {{- end }}
           volumeMounts:
             - name: data
-              mountPath: /var/lib/sharelatex
+              mountPath: /var/lib/overleaf
       volumes:
         - name: data
           {{- if .Values.persistence.data.enabled }}
