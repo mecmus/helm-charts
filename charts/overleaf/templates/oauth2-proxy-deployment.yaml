@@ -47,6 +47,8 @@ spec:
             - --cookie-name={{ .Values.oauth2Proxy.cookieName }}
             - --cookie-expire={{ .Values.oauth2Proxy.cookieExpire }}
             - --cookie-refresh={{ .Values.oauth2Proxy.cookieRefresh }}
+            - --session-store-type=redis
+            - --redis-connection-url=redis://{{ include "overleaf.redisHost" . }}:{{ include "overleaf.redisPort" . }}
             - --skip-provider-button=true
             {{- range .Values.oauth2Proxy.extraArgs }}
             - {{ . | quote }}
