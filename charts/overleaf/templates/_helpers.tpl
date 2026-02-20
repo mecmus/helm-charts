@@ -70,7 +70,7 @@ MongoDB URL
 */}}
 {{- define "overleaf.mongodbUrl" -}}
 {{- if .Values.mongodb.enabled }}
-{{- printf "mongodb://%s-mongodb:27017/sharelatex" .Release.Name }}
+{{- printf "mongodb://%s-mongodb:27017/sharelatex" (include "overleaf.fullname" .) }}
 {{- else }}
 {{- .Values.mongodb.external.url }}
 {{- end }}
@@ -81,7 +81,7 @@ Redis host
 */}}
 {{- define "overleaf.redisHost" -}}
 {{- if .Values.redis.enabled }}
-{{- printf "%s-redis-master" .Release.Name }}
+{{- printf "%s-redis" (include "overleaf.fullname" .) }}
 {{- else }}
 {{- .Values.redis.external.host }}
 {{- end }}

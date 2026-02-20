@@ -132,14 +132,26 @@ persistence:
 # -- MongoDB configuration
 mongodb:
   enabled: true
-  # When enabled, uses bitnami/mongodb subchart
-  # When disabled, provide external connection string
-  auth:
-    enabled: false
+  # When enabled, deploys a MongoDB instance using the official image
+  # When disabled, provide an external connection string
+  image:
+    repository: mongo
+    tag: "7"
+    pullPolicy: IfNotPresent
   persistence:
     enabled: true
     size: 8Gi
     storageClass: ""
+    accessModes:
+      - ReadWriteOnce
+    existingClaim: ""
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 1
+      memory: 1Gi
   # External MongoDB (used when mongodb.enabled=false)
   external:
     url: ""
@@ -148,17 +160,26 @@ mongodb:
 # -- Redis configuration
 redis:
   enabled: true
-  # When enabled, uses bitnami/redis subchart
+  # When enabled, deploys a Redis instance using the official image
   # When disabled, provide external connection details
-  auth:
-    enabled: false
-  master:
-    persistence:
-      enabled: true
-      size: 2Gi
-      storageClass: ""
-  replica:
-    replicaCount: 0
+  image:
+    repository: redis
+    tag: "7"
+    pullPolicy: IfNotPresent
+  persistence:
+    enabled: true
+    size: 2Gi
+    storageClass: ""
+    accessModes:
+      - ReadWriteOnce
+    existingClaim: ""
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
   # External Redis (used when redis.enabled=false)
   external:
     host: ""

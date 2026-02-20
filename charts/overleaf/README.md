@@ -4,7 +4,7 @@
 
 Ce chart Helm déploie **Overleaf Community Edition** (v6.1.1) sur Kubernetes avec une authentification OIDC via **oauth2-proxy**. Il est compatible avec les fournisseurs d'identité **Microsoft Entra ID (Azure AD)** et **Keycloak** (et tout fournisseur OIDC standard).
 
-Le chart inclut optionnellement MongoDB et Redis via les sous-charts Bitnami, ou peut s'intégrer à des instances externes.
+Le chart inclut optionnellement MongoDB (image officielle `mongo:7`) et Redis (image officielle `redis:7`) déployés directement, ou peut s'intégrer à des instances externes.
 
 ---
 
@@ -27,7 +27,7 @@ Ingress (nginx + cert-manager TLS)
 
 - **oauth2-proxy** gère l'authentification OIDC et transmet les headers d'identité à Overleaf.
 - **Overleaf CE** utilise l'image officielle `sharelatex/sharelatex`.
-- **MongoDB** et **Redis** peuvent être déployés en sous-charts ou configurés comme services externes.
+- **MongoDB** et **Redis** peuvent être déployés directement (images officielles) ou configurés comme services externes.
 
 ---
 
@@ -159,25 +159,26 @@ helm install overleaf mecmus/overleaf \
 
 ## Configuration MongoDB / Redis
 
-### Utiliser les sous-charts intégrés (par défaut)
+### Utiliser les instances intégrées (par défaut)
+
+MongoDB (`mongo:7`) et Redis (`redis:7`) sont déployés directement dans le cluster à partir des images officielles.
 
 ```yaml
 mongodb:
   enabled: true
-  auth:
-    enabled: false
+  image:
+    repository: mongo
+    tag: "7"
   persistence:
     size: 8Gi
 
 redis:
   enabled: true
-  auth:
-    enabled: false
-  master:
-    persistence:
-      size: 2Gi
-  replica:
-    replicaCount: 0
+  image:
+    repository: redis
+    tag: "7"
+  persistence:
+    size: 2Gi
 ```
 
 ### Utiliser des instances externes
@@ -247,9 +248,17 @@ redis:
 | `persistence.data.size` | Taille du volume | `10Gi` |
 | `persistence.data.storageClass` | Classe de stockage | `""` |
 | `persistence.data.existingClaim` | PVC existant | `""` |
-| `mongodb.enabled` | Déployer MongoDB en sous-chart | `true` |
+| `mongodb.enabled` | Déployer MongoDB (image officielle) | `true` |
+| `mongodb.image.repository` | Image MongoDB | `mongo` |
+| `mongodb.image.tag` | Tag MongoDB | `7` |
+| `mongodb.persistence.size` | Taille du volume MongoDB | `8Gi` |
+| `mongodb.persistence.existingClaim` | PVC existant pour MongoDB | `""` |
 | `mongodb.external.url` | URL MongoDB externe | `""` |
-| `redis.enabled` | Déployer Redis en sous-chart | `true` |
+| `redis.enabled` | Déployer Redis (image officielle) | `true` |
+| `redis.image.repository` | Image Redis | `redis` |
+| `redis.image.tag` | Tag Redis | `7` |
+| `redis.persistence.size` | Taille du volume Redis | `2Gi` |
+| `redis.persistence.existingClaim` | PVC existant pour Redis | `""` |
 | `redis.external.host` | Hôte Redis externe | `""` |
 | `redis.external.port` | Port Redis externe | `6379` |
 | `resources` | Ressources CPU/mémoire pour Overleaf | voir values.yaml |

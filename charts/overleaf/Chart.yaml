@@ -4,12 +4,3 @@ description: "Overleaf Community Edition with OIDC authentication via oauth2-pro
 type: application
 version: 0.1.0
 appVersion: "6.1.1"
-dependencies:
-  - name: mongodb
-    version: ">=15.0.0"
-    repository: "https://charts.bitnami.com/bitnami"
-    condition: mongodb.enabled
-  - name: redis
-    version: ">=19.0.0"
-    repository: "https://charts.bitnami.com/bitnami"
-    condition: redis.enabled
