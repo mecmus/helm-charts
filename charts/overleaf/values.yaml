@@ -132,8 +132,8 @@ persistence:
 # -- MongoDB configuration
 mongodb:
   enabled: true
-  # When enabled, deploys a MongoDB instance using the official image
-  # When disabled, provide an external connection string
+  # When enabled, deploys a single-node MongoDB replica set (required for
+  # Overleaf transaction support). When disabled, provide an external URL.
   image:
     repository: mongo
     tag: "7"

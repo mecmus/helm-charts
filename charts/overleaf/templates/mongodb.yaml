@@ -65,9 +65,25 @@ spec:
         - name: mongodb
           image: "{{ .Values.mongodb.image.repository }}:{{ .Values.mongodb.image.tag }}"
           imagePullPolicy: {{ .Values.mongodb.image.pullPolicy }}
+          args:
+            - --replSet
+            - rs0
+            - --bind_ip_all
           ports:
             - containerPort: 27017
               protocol: TCP
+          lifecycle:
+            postStart:
+              exec:
+                command:
+                  - bash
+                  - -c
+                  - |
+                    for i in $(seq 1 30); do
+                      mongosh --eval "db.adminCommand('ping')" && break
+                      sleep 1
+                    done
+                    mongosh --eval "try { rs.status() } catch(e) { rs.initiate({_id:'rs0', members:[{_id:0, host:'localhost:27017'}]}) }"
           livenessProbe:
             exec:
               command:

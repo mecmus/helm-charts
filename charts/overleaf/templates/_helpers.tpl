@@ -70,7 +70,7 @@ MongoDB URL
 */}}
 {{- define "overleaf.mongodbUrl" -}}
 {{- if .Values.mongodb.enabled }}
-{{- printf "mongodb://%s-mongodb:27017/sharelatex" (include "overleaf.fullname" .) }}
+{{- printf "mongodb://%s-mongodb:27017/sharelatex?directConnection=true" (include "overleaf.fullname" .) }}
 {{- else }}
 {{- .Values.mongodb.external.url }}
 {{- end }}
