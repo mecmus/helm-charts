@@ -54,7 +54,7 @@ spec:
                   subPath: config.php
                 {{- if .Values.persistence.enabled }}
                 - name: filesender-data
-                  mountPath: /var/www/files
+                  mountPath: {{ .Values.filesender.storage.path }}
                 {{- end }}
           volumes:
             - name: filesender-config

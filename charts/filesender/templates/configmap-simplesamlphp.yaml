@@ -7,67 +7,181 @@ metadata:
 data:
   config.php: |
     <?php
-    // SimpleSAMLphp configuration
-    
     $config = [
         'baseurlpath' => '{{ .Values.filesender.siteUrl }}/simplesaml/',
         'certdir' => 'cert/',
         'loggingdir' => 'log/',
         'datadir' => 'data/',
         'tempdir' => '/tmp/simplesaml',
-        
         'technicalcontact_name' => 'Administrator',
         'technicalcontact_email' => '{{ .Values.filesender.adminEmail }}',
-        
         'secretsalt' => getenv('SIMPLESAMLPHP_SECRET_SALT'),
         'auth.adminpassword' => getenv('SIMPLESAMLPHP_ADMIN_PASSWORD'),
-        
         'admin.protectindexpage' => true,
         'admin.protectmetadata' => true,
-        
         'logging.level' => SimpleSAML\Logger::NOTICE,
         'logging.handler' => 'syslog',
         
-        'enable.saml20-idp' => false,
-        'enable.shib13-idp' => false,
-        'enable.adfs-idp' => false,
-        'enable.wsfed-sp' => false,
-        'enable.authmemcookie' => false,
+        // Session storage in PostgreSQL
+        'store.type' => '{{ .Values.simplesamlphp.session.storeType | default "sql" }}',
+        'store.sql.dsn' => 'pgsql:host={{ if .Values.postgresql.external.enabled }}{{ .Values.postgresql.external.host }}{{ else }}{{ include "filesender.fullname" . }}-postgresql{{ end }};port={{ if .Values.postgresql.external.enabled }}{{ .Values.postgresql.external.port }}{{ else }}5432{{ end }};dbname={{ if .Values.postgresql.external.enabled }}{{ .Values.postgresql.external.database }}{{ else }}{{ .Values.postgresql.internal.database }}{{ end }}',
+        'store.sql.username' => '{{ if .Values.postgresql.external.enabled }}{{ .Values.postgresql.external.username }}{{ else }}{{ .Values.postgresql.internal.username }}{{ end }}',
+        'store.sql.password' => getenv('POSTGRES_PASSWORD'),
+        'store.sql.prefix' => '{{ .Values.simplesamlphp.session.tablePrefix | default "simplesaml_" }}',
+        
+        // Session cookie configuration
+        'session.cookie.path' => '{{ .Values.simplesamlphp.session.cookiePath | default "/" }}',
+        'session.phpsession.cookiename' => '{{ .Values.simplesamlphp.session.cookieName | default "SimpleSAMLSessionID" }}',
+        'session.cookie.secure' => true,
+        'session.cookie.samesite' => 'None',
+        
+        'module.enable' => [
+            'core' => true,
+            'admin' => true,
+            'saml' => true,
+            'cron' => true,
+            'metarefresh' => true,
+            'exampleauth' => true, // Toujours requis pour le backend de l'IdP local
+        ],
+        
+        // Metadata sources
+        'metadata.sources' => [
+            ['type' => 'flatfile'],
+            ['type' => 'serialize', 'directory' => 'metadata/generated'],
+        ],
+        
+        // IMPORTANT : On réactive l'IdP car on va s'auto-héberger (si localUsers activé)
+        'enable.saml20-idp' => {{ .Values.simplesamlphp.localUsers.enabled }},
     ];
   
   authsources.php: |
     <?php
     $config = [
-        'admin' => [
-            'core:AdminPassword',
-        ],
+        'admin' => ['core:AdminPassword'],
         
+        // Global SP definition - used by FileSender
+        'default-sp' => [
+            'saml:SP',
+            'entityID' => '{{ .Values.filesender.siteUrl }}',
+            'discoURL' => null,
+            
+            {{- if eq .Values.simplesamlphp.saml.provider "entra" }}
+            // Microsoft Entra ID
+            'idp' => 'https://sts.windows.net/{{ .Values.simplesamlphp.saml.entra.tenantId }}/',
+            
+            // SP Certificate & Key (for signing/decryption compatibility)
+            'certificate' => 'server.crt',
+            'privatekey' => 'server.pem',
+
+            // Entra ID often signs the Response but not the Assertion
+            'wantAssertionsSigned' => false, 
+
+            'authproc' => [
+                // Convert Entra ID claims to standard attributes
+                [
+                    'class' => 'core:AttributeMap',
+                    'oid2name',
+                ],
+            ],
+            {{- else if eq .Values.simplesamlphp.saml.provider "other" }}
+            // Generic/Other Provider
+            {{- if .Values.simplesamlphp.saml.other.metadataUrl }}
+            // If metadata URL is provided, we can leave idp null to let discovery (or metadata) handle it, 
+            // OR if we knew the entityID we could set it. 
+            // Better to leave null so it picks up the single IdP from metadata if only one exists.
+            'idp' => null,
+            {{- else }}
+            'idp' => null,
+            {{- end }}
+            {{- else }}
+            // Fallback / Local Mode
+            'idp' => 'urn:x-simplesamlphp:local-idp',
+            {{- end }}
+        ],
+
         {{- if .Values.simplesamlphp.localUsers.enabled }}
-        '{{ .Values.simplesamlphp.authenticationSource }}' => [
+        // Local User Database (for testing)
+        'example-userpass' => [
             'exampleauth:UserPass',
             {{- range .Values.simplesamlphp.localUsers.users }}
-            '{{ .username }}:{{ .password }}' => [
+            ('{{ .username }}:' . getenv('LOCAL_USER_{{ .username | upper }}_PASSWORD')) => [
                 'uid' => ['{{ .uid }}'],
-                'eduPersonAffiliation' => ['member', 'employee'],
-                'email' => '{{ .email }}',
+                'mail' => ['{{ .email }}'],
+                'email' => ['{{ .email }}'],
+                'cn' => ['{{ .username }}'],
+                'eduPersonTargetedID' => ['{{ .uid }}'],
+                'eduPersonPrincipalName' => ['{{ .uid }}@example.com'],
             ],
             {{- end }}
         ],
-        {{- else }}
-        '{{ .Values.simplesamlphp.authenticationSource }}' => [
-            'saml:SP',
-            'entityID' => '{{ .Values.filesender.siteUrl }}/simplesaml/module.php/saml/sp/metadata.php/{{ .Values.simplesamlphp.authenticationSource }}',
-            'idp' => '{{ .Values.simplesamlphp.idp.entityId }}',
-        ],
         {{- end }}
     ];
-  
-  {{- if and (not .Values.simplesamlphp.localUsers.enabled) .Values.simplesamlphp.idp.entityId }}
+
+  config-metarefresh.php: |
+    <?php
+    $config = [
+        'sets' => [
+            'idp' => [
+                'cron' => ['hourly'],
+                'sources' => [
+                    {{- if eq .Values.simplesamlphp.saml.provider "entra" }}
+                    [
+                        'src' => '{{ .Values.simplesamlphp.saml.entra.metadataUrl | default (printf "https://login.microsoftonline.com/%s/federationmetadata/2007-06/federationmetadata.xml?appid=%s" .Values.simplesamlphp.saml.entra.tenantId .Values.simplesamlphp.saml.entra.applicationId) }}',
+                    ],
+                    {{- else if .Values.simplesamlphp.saml.other.metadataXml }}
+                    [
+                        'src' => 'file:///var/simplesaml/metadata-raw/metadata.xml',
+                    ],
+                    {{- else if .Values.simplesamlphp.saml.other.metadataUrl }}
+                    [
+                        'src' => '{{ .Values.simplesamlphp.saml.other.metadataUrl }}',
+                    ],
+                    {{- end }}
+                ],
+                'expireAfter' => 60*60*24*4, // 4 days
+                'outputDir' => 'metadata/generated',
+                'outputFormat' => 'serialize',
+            ],
+        ],
+    ];
+
+  # Définition de l'IdP Local
+  saml20-idp-hosted.php: |
+    <?php
+    $metadata['urn:x-simplesamlphp:local-idp'] = [
+        'host' => '__DEFAULT__',
+        'privatekey' => 'server.pem',
+        'certificate' => 'server.crt',
+        'auth' => 'example-userpass', // Utilise la liste d'utilisateurs définie dans authsources
+    ];
+
+  # Définition pour que le SP trouve l'IdP local (si activé)
   saml20-idp-remote.php: |
     <?php
-    $metadata['{{ .Values.simplesamlphp.idp.entityId }}'] = [
-        'SingleSignOnService' => '{{ .Values.simplesamlphp.idp.ssoUrl }}',
-        'SingleLogoutService' => '',
-        'certificate' => '{{ .Values.simplesamlphp.idp.certificate }}',
+    {{- if .Values.simplesamlphp.localUsers.enabled }}
+    // Configuration IdP local pour tests
+    $metadata['urn:x-simplesamlphp:local-idp'] = [
+        'name' => ['en' => 'Local Test IdP'],
+        'description' => 'Local IdP for testing',
+        'SingleSignOnService'  => '{{ .Values.filesender.siteUrl }}/simplesaml/saml2/idp/SSOService.php',
+        'SingleLogoutService'  => '{{ .Values.filesender.siteUrl }}/simplesaml/saml2/idp/SingleLogoutService.php',
+        'certificate' => 'server.crt',
     ];
-  {{- end }}
+    {{- end }}
+    // NOTE: External IdP metadata is handled by metarefresh module and stored in metadata/generated
+  saml20-sp-remote.php: |
+    <?php
+    {{- if .Values.simplesamlphp.localUsers.enabled }}
+    // L'IdP local doit connaitre le SP local
+    $metadata['{{ .Values.filesender.siteUrl }}/simplesaml/module.php/saml/sp/metadata.php/{{ .Values.simplesamlphp.authenticationSource }}'] = [
+        'AssertionConsumerService' => '{{ .Values.filesender.siteUrl }}/simplesaml/module.php/saml/sp/saml2-acs.php/{{ .Values.simplesamlphp.authenticationSource }}',
+        'SingleLogoutService' => '{{ .Values.filesender.siteUrl }}/simplesaml/module.php/saml/sp/saml2-logout.php/{{ .Values.simplesamlphp.authenticationSource }}',
+    ];
+    {{- end }}
+    {{- if and (eq .Values.simplesamlphp.saml.provider "other") .Values.simplesamlphp.saml.other.metadataXml }}
+  metadata-raw.xml: |
+{{ .Values.simplesamlphp.saml.other.metadataXml | indent 4 }}
+    {{- else if and (eq .Values.simplesamlphp.saml.provider "entra") .Values.simplesamlphp.saml.entra.metadataXml }}
+  metadata-raw.xml: |
+{{ .Values.simplesamlphp.saml.entra.metadataXml | indent 4 }}
+    {{- end }}
