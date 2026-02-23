@@ -55,7 +55,7 @@ filesender:
   # Encryption
   encryption:
     enabled: true
-    mandatory: false
+    mandatory: true  # Files encrypted by default as requested
     minPasswordLength: 12
     mustHaveUpperAndLowerCase: true
     mustHaveNumbers: true
@@ -76,15 +76,21 @@ filesender:
     useStrictCSP: true
     banExtension: "exe,bat"
 
+# Pod Security Context
+podSecurityContext:
+  fsGroup: 82 # www-data on Alpine, ensures write permissions on mounted volumes
+
+# Container Security Context
+containerSecurityContext:
+  runAsUser: 0 # Running as root to allow supervisor to manage processes
+  runAsGroup: 0
+  allowPrivilegeEscalation: false
+
+# Configuration SimpleSAMLphp
 # Configuration SimpleSAMLphp
 simplesamlphp:
   adminPassword: ""  # Sera généré si vide
   secretSalt: ""     # Sera généré si vide
-  authType: "fake"   # saml, shibboleth, fake
-  authenticationSource: "default-sp"
-  uidAttribute: "eduPersonTargetedID"
-  emailAttribute: "mail"
-  nameAttribute: "cn"
   
   # Session configuration
   session:
@@ -105,35 +111,32 @@ simplesamlphp:
         password: ""  # Sera généré si vide
         email: "testadmin@example.com"
         uid: "testadmin"
-  
-  # Configuration IdP externe (ex: Microsoft Entra ID, ADFS, etc.)
-  # Pour activer, mettre localUsers.enabled à false
-  idp:
-    # Entity ID de l'IdP (ex: https://sts.windows.net/<tenant-id>/ pour Entra ID)
-    entityId: ""
-    # URL du service SSO (ex: https://login.microsoftonline.com/<tenant-id>/saml2)
-    ssoUrl: ""
-    # Certificat de signature SAML de l'IdP (format PEM, une seule ligne)
-    certificate: ""
-    # URL des métadonnées de l'IdP (optionnel, alternative au certificat)
-    metadataUrl: ""
-  
-  # Configuration spécifique pour Microsoft Entra ID
-  entraId:
-    # Activer l'intégration Entra ID (désactive localUsers automatiquement)
-    enabled: false
-    # Tenant ID Azure (GUID)
-    tenantId: ""
-    # Application (client) ID
-    clientId: ""
-    # Attributs mappés depuis Entra ID
-    attributes:
-      # Nom de l'attribut pour l'email dans les claims Entra ID
-      email: "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress"
-      # Nom de l'attribut pour le nom d'utilisateur
-      name: "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name"
-      # Nom de l'attribut pour l'identifiant unique
-      uid: "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier"
+
+  # SAML Configuration
+  saml:
+    # Provider type: "entra" (Microsoft Entra ID) or "other" (Generic SAML)
+    # If "entra": uses tenantId/applicationId to auto-configure metadata and attributes.
+    # If "other": requires explicit metadataUrl (or xml) and attribute mapping.
+    provider: "other"
+    
+    # Microsoft Entra ID Configuration
+    entra:
+      tenantId: "" # Required if provider is "entra"
+      applicationId: "" # Required if provider is "entra". Used to construct metadata URL.
+      metadataUrl: "" # Optional: Override auto-generated metadata URL. Default is https://login.microsoftonline.com/<tenantId>/federationmetadata/2007-06/federationmetadata.xml?appid=<applicationId>
+      metadataXml: "" # Optional: Paste XML content here to avoid outbound connection
+    
+    # Generic/Other IDP Configuration
+    other:
+      metadataUrl: "" # URL to fetch metadata from
+      metadataXml: "" # OR Paste XML content here
+      
+      # Attribute mapping (Local FileSender attribute -> SAML Attribute Name)
+      attributes:
+        uid: "eduPersonTargetedID"
+        email: "mail"
+        name: "cn"
+
 
 # Configuration PostgreSQL
 postgresql:

@@ -22,6 +22,8 @@ spec:
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
       initContainers:
         - name: db-init
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
@@ -56,6 +58,34 @@ spec:
               subPath: config.php
             - name: tmp
               mountPath: {{ .Values.filesender.paths.tmp | default "/opt/filesender/filesender/tmp" }}
+        
+        {{- if or (eq .Values.simplesamlphp.saml.provider "entra") (and (eq .Values.simplesamlphp.saml.provider "other") (or .Values.simplesamlphp.saml.other.metadataUrl .Values.simplesamlphp.saml.other.metadataXml)) }}
+        - name: metadata-fetcher
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          # Run metarefresh using a direct PHP script that explicitly loads our config
+          command: 
+            - /bin/sh
+            - -c
+            - |
+              echo "Starting metadata fetch..."
+              php -r "define('SIMPLESAMLPATH', '/opt/filesender/simplesaml/'); require_once(SIMPLESAMLPATH . 'lib/_autoload.php'); use SimpleSAML\Configuration; use SimpleSAML\Module\metarefresh\MetaRefresh; try { \$config = Configuration::getInstance(); \$mconfig = Configuration::getConfig('config-metarefresh.php'); \$mf = new MetaRefresh(\$config, \$mconfig); \$mf->runRefresh('hourly'); echo 'Metadata updated successfully'; } catch (Exception \$e) { echo 'Error updating metadata: ' . \$e->getMessage(); exit(1); }"
+          volumeMounts:
+            - name: simplesamlphp-config
+              mountPath: /opt/filesender/simplesaml/config/config.php
+              subPath: config.php
+            - name: simplesamlphp-config
+              mountPath: /opt/filesender/simplesaml/config/config-metarefresh.php
+              subPath: config-metarefresh.php
+            - name: metadata-generated
+              mountPath: /opt/filesender/simplesaml/metadata/generated
+            {{- if or .Values.simplesamlphp.saml.entra.metadataXml .Values.simplesamlphp.saml.other.metadataXml }}
+            - name: metadata-raw
+              mountPath: /var/simplesaml/metadata-raw/metadata.xml
+              subPath: metadata-raw.xml
+            {{- end }}
+        {{- end }}
+
       containers:
         - name: {{ .Chart.Name }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
@@ -101,7 +131,6 @@ spec:
                   key: simplesamlphp-secret-salt
             
             {{- if .Values.simplesamlphp.localUsers.enabled }}
-            # Local user passwords
             {{- range .Values.simplesamlphp.localUsers.users }}
             - name: LOCAL_USER_{{ .username | upper }}_PASSWORD
               valueFrom:
@@ -110,6 +139,8 @@ spec:
                   key: local-user-{{ .username }}-password
             {{- end }}
             {{- end }}
+          securityContext:
+            {{- toYaml .Values.containerSecurityContext | nindent 12 }}
           
           {{- if .Values.livenessProbe.enabled }}
           livenessProbe:
@@ -131,6 +162,9 @@ spec:
             - name: simplesamlphp-config
               mountPath: /opt/filesender/simplesaml/config/config.php
               subPath: config.php
+            - name: simplesamlphp-config
+              mountPath: /opt/filesender/simplesaml/config/config-metarefresh.php
+              subPath: config-metarefresh.php
             - name: simplesamlphp-authsources
               mountPath: /opt/filesender/simplesaml/config/authsources.php
               subPath: authsources.php
@@ -155,7 +189,41 @@ spec:
               subPath: saml20-sp-remote.php    
             - name: simplesamlphp-cert
               mountPath: /opt/filesender/simplesaml/cert
-              readOnly: true  
+              readOnly: true
+            - name: metadata-generated
+              mountPath: /opt/filesender/simplesaml/metadata/generated
+            {{- if or .Values.simplesamlphp.saml.entra.metadataXml .Values.simplesamlphp.saml.other.metadataXml }}
+            - name: metadata-raw
+              mountPath: /var/simplesaml/metadata-raw/metadata.xml
+              subPath: metadata-raw.xml
+            {{- end }}
+        
+        {{- if or (eq .Values.simplesamlphp.saml.provider "entra") (and (eq .Values.simplesamlphp.saml.provider "other") .Values.simplesamlphp.saml.other.metadataUrl) }}
+        # Sidecar for periodic metadata refresh (instead of CronJob, to share the emptyDir volume)
+        - name: metadata-refresher
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: 
+            - /bin/sh
+            - -c
+            - |
+              while true; do
+                echo "Sleeping 1 hour..."
+                sleep 3600
+                echo "Refreshing metadata..."
+                php -r "define('SIMPLESAMLPATH', '/opt/filesender/simplesaml/'); require_once(SIMPLESAMLPATH . 'lib/_autoload.php'); use SimpleSAML\Configuration; use SimpleSAML\Module\metarefresh\MetaRefresh; try { \$config = Configuration::getInstance(); \$mconfig = Configuration::getConfig('config-metarefresh.php'); \$mf = new MetaRefresh(\$config, \$mconfig); \$mf->runRefresh('hourly'); echo 'Metadata updated successfully'; } catch (Exception \$e) { echo 'Error updating metadata: ' . \$e->getMessage(); }"
+              done
+          volumeMounts:
+            - name: simplesamlphp-config
+              mountPath: /opt/filesender/simplesaml/config/config.php
+              subPath: config.php
+            - name: simplesamlphp-config
+              mountPath: /opt/filesender/simplesaml/config/config-metarefresh.php
+              subPath: config-metarefresh.php
+            - name: metadata-generated
+              mountPath: /opt/filesender/simplesaml/metadata/generated
+        {{- end }}
+
       volumes:
         - name: simplesamlphp-cert
           secret:
@@ -175,6 +243,8 @@ spec:
             items:
               - key: config.php
                 path: config.php
+              - key: config-metarefresh.php
+                path: config-metarefresh.php 
         - name: simplesamlphp-authsources
           configMap:
             name: {{ include "filesender.fullname" . }}-simplesamlphp
@@ -204,6 +274,16 @@ spec:
           emptyDir: {}
         - name: log
           emptyDir: {}
+        - name: metadata-generated
+          emptyDir: {}
+        {{- if or .Values.simplesamlphp.saml.entra.metadataXml .Values.simplesamlphp.saml.other.metadataXml }}
+        - name: metadata-raw
+          configMap: 
+            name: {{ include "filesender.fullname" . }}-simplesamlphp
+            items:
+              - key: metadata-raw.xml
+                path: metadata-raw.xml
+        {{- end }}
       
       {{- with .Values.nodeSelector }}
       nodeSelector:

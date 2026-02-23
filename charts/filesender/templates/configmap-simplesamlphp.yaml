@@ -39,10 +39,18 @@ data:
             'core' => true,
             'admin' => true,
             'saml' => true,
+            'cron' => true,
+            'metarefresh' => true,
             'exampleauth' => true, // Toujours requis pour le backend de l'IdP local
         ],
         
-        // IMPORTANT : On réactive l'IdP car on va s'auto-héberger
+        // Metadata sources
+        'metadata.sources' => [
+            ['type' => 'flatfile'],
+            ['type' => 'serialize', 'directory' => 'metadata/generated'],
+        ],
+        
+        // IMPORTANT : On réactive l'IdP car on va s'auto-héberger (si localUsers activé)
         'enable.saml20-idp' => {{ .Values.simplesamlphp.localUsers.enabled }},
     ];
   
@@ -51,17 +59,48 @@ data:
     $config = [
         'admin' => ['core:AdminPassword'],
         
-        {{- if or .Values.simplesamlphp.localUsers.enabled (not .Values.simplesamlphp.entraId.enabled) }}
-        {{- if .Values.simplesamlphp.localUsers.enabled }}
-        // Mode local pour tests - La source "Visible" par Filesender (Type SAML)
-        '{{ .Values.simplesamlphp.authenticationSource }}' => [
+        // Global SP definition - used by FileSender
+        'default-sp' => [
             'saml:SP',
-            'entityID' => '{{ .Values.filesender.siteUrl }}/simplesaml/module.php/saml/sp/metadata.php/{{ .Values.simplesamlphp.authenticationSource }}',
-            'idp' => 'urn:x-simplesamlphp:local-idp', // Doit correspondre à l'IdP défini plus bas
+            'entityID' => '{{ .Values.filesender.siteUrl }}',
             'discoURL' => null,
+            
+            {{- if eq .Values.simplesamlphp.saml.provider "entra" }}
+            // Microsoft Entra ID
+            'idp' => 'https://sts.windows.net/{{ .Values.simplesamlphp.saml.entra.tenantId }}/',
+            
+            // SP Certificate & Key (for signing/decryption compatibility)
+            'certificate' => 'server.crt',
+            'privatekey' => 'server.pem',
+
+            // Entra ID often signs the Response but not the Assertion
+            'wantAssertionsSigned' => false, 
+
+            'authproc' => [
+                // Convert Entra ID claims to standard attributes
+                [
+                    'class' => 'core:AttributeMap',
+                    'oid2name',
+                ],
+            ],
+            {{- else if eq .Values.simplesamlphp.saml.provider "other" }}
+            // Generic/Other Provider
+            {{- if .Values.simplesamlphp.saml.other.metadataUrl }}
+            // If metadata URL is provided, we can leave idp null to let discovery (or metadata) handle it, 
+            // OR if we knew the entityID we could set it. 
+            // Better to leave null so it picks up the single IdP from metadata if only one exists.
+            'idp' => null,
+            {{- else }}
+            'idp' => null,
+            {{- end }}
+            {{- else }}
+            // Fallback / Local Mode
+            'idp' => 'urn:x-simplesamlphp:local-idp',
+            {{- end }}
         ],
-        
-        // 2. La source "Interne" (Base de données utilisateurs)
+
+        {{- if .Values.simplesamlphp.localUsers.enabled }}
+        // Local User Database (for testing)
         'example-userpass' => [
             'exampleauth:UserPass',
             {{- range .Values.simplesamlphp.localUsers.users }}
@@ -75,37 +114,38 @@ data:
             ],
             {{- end }}
         ],
-        {{- else }}
-        // Mode PROD - IdP externe standard
-        '{{ .Values.simplesamlphp.authenticationSource }}' => [
-            'saml:SP',
-            'entityID' => '{{ .Values.filesender.siteUrl }}/simplesaml/module.php/saml/sp/metadata.php/{{ .Values.simplesamlphp.authenticationSource }}',
-            'idp' => '{{ .Values.simplesamlphp.idp.entityId }}',
-            'discoURL' => null,
-        ],
-        {{- end }}
-        {{- else }}
-        // Mode Microsoft Entra ID (Azure AD)
-        '{{ .Values.simplesamlphp.authenticationSource }}' => [
-            'saml:SP',
-            'entityID' => '{{ .Values.filesender.siteUrl }}',
-            'idp' => 'https://sts.windows.net/{{ .Values.simplesamlphp.entraId.tenantId }}/',
-            'discoURL' => null,
-            {{- if .Values.simplesamlphp.entraId.attributes }}
-            // Mapping des attributs Entra ID vers attributs FileSender
-            'authproc' => [
-                // Convertit les claims Entra ID en attributs SAML standard
-                [
-                    'class' => 'core:AttributeMap',
-                    'oid2name',
-                ],
-            ],
-            {{- end }}
-        ],
         {{- end }}
     ];
 
-  # Définition de l'IdP Local (C'est ce fichier qui manquait dans votre erreur Metadata initiale)
+  config-metarefresh.php: |
+    <?php
+    $config = [
+        'sets' => [
+            'idp' => [
+                'cron' => ['hourly'],
+                'sources' => [
+                    {{- if eq .Values.simplesamlphp.saml.provider "entra" }}
+                    [
+                        'src' => '{{ .Values.simplesamlphp.saml.entra.metadataUrl | default (printf "https://login.microsoftonline.com/%s/federationmetadata/2007-06/federationmetadata.xml?appid=%s" .Values.simplesamlphp.saml.entra.tenantId .Values.simplesamlphp.saml.entra.applicationId) }}',
+                    ],
+                    {{- else if .Values.simplesamlphp.saml.other.metadataXml }}
+                    [
+                        'src' => 'file:///var/simplesaml/metadata-raw/metadata.xml',
+                    ],
+                    {{- else if .Values.simplesamlphp.saml.other.metadataUrl }}
+                    [
+                        'src' => '{{ .Values.simplesamlphp.saml.other.metadataUrl }}',
+                    ],
+                    {{- end }}
+                ],
+                'expireAfter' => 60*60*24*4, // 4 days
+                'outputDir' => 'metadata/generated',
+                'outputFormat' => 'serialize',
+            ],
+        ],
+    ];
+
+  # Définition de l'IdP Local
   saml20-idp-hosted.php: |
     <?php
     $metadata['urn:x-simplesamlphp:local-idp'] = [
@@ -115,7 +155,7 @@ data:
         'auth' => 'example-userpass', // Utilise la liste d'utilisateurs définie dans authsources
     ];
 
-  # Définition pour que le SP trouve l'IdP (Même si c'est local)
+  # Définition pour que le SP trouve l'IdP local (si activé)
   saml20-idp-remote.php: |
     <?php
     {{- if .Values.simplesamlphp.localUsers.enabled }}
@@ -127,31 +167,8 @@ data:
         'SingleLogoutService'  => '{{ .Values.filesender.siteUrl }}/simplesaml/saml2/idp/SingleLogoutService.php',
         'certificate' => 'server.crt',
     ];
-    {{- else if .Values.simplesamlphp.entraId.enabled }}
-    // Configuration Microsoft Entra ID (Azure AD)
-    $metadata['https://sts.windows.net/{{ .Values.simplesamlphp.entraId.tenantId }}/'] = [
-        'name' => ['en' => 'Microsoft Entra ID', 'fr' => 'Microsoft Entra ID'],
-        'description' => 'Microsoft Entra ID SAML Identity Provider',
-        'SingleSignOnService' => 'https://login.microsoftonline.com/{{ .Values.simplesamlphp.entraId.tenantId }}/saml2',
-        'SingleLogoutService' => 'https://login.microsoftonline.com/{{ .Values.simplesamlphp.entraId.tenantId }}/saml2',
-        {{- if .Values.simplesamlphp.idp.certificate }}
-        'certificate' => '{{ .Values.simplesamlphp.idp.certificate }}',
-        {{- end }}
-        {{- if .Values.simplesamlphp.idp.metadataUrl }}
-        // Alternative: utiliser l'URL de métadonnées
-        // 'metadata-set' => 'saml20-idp-remote',
-        {{- end }}
-    ];
-    {{- else if .Values.simplesamlphp.idp.entityId }}
-    // Configuration IdP externe générique
-    $metadata['{{ .Values.simplesamlphp.idp.entityId }}'] = [
-        'SingleSignOnService' => '{{ .Values.simplesamlphp.idp.ssoUrl }}',
-        'SingleLogoutService' => '',
-        {{- if .Values.simplesamlphp.idp.certificate }}
-        'certificate' => '{{ .Values.simplesamlphp.idp.certificate }}',
-        {{- end }}
-    ];
     {{- end }}
+    // NOTE: External IdP metadata is handled by metarefresh module and stored in metadata/generated
   saml20-sp-remote.php: |
     <?php
     {{- if .Values.simplesamlphp.localUsers.enabled }}
@@ -160,4 +177,11 @@ data:
         'AssertionConsumerService' => '{{ .Values.filesender.siteUrl }}/simplesaml/module.php/saml/sp/saml2-acs.php/{{ .Values.simplesamlphp.authenticationSource }}',
         'SingleLogoutService' => '{{ .Values.filesender.siteUrl }}/simplesaml/module.php/saml/sp/saml2-logout.php/{{ .Values.simplesamlphp.authenticationSource }}',
     ];
+    {{- end }}
+    {{- if and (eq .Values.simplesamlphp.saml.provider "other") .Values.simplesamlphp.saml.other.metadataXml }}
+  metadata-raw.xml: |
+{{ .Values.simplesamlphp.saml.other.metadataXml | indent 4 }}
+    {{- else if and (eq .Values.simplesamlphp.saml.provider "entra") .Values.simplesamlphp.saml.entra.metadataXml }}
+  metadata-raw.xml: |
+{{ .Values.simplesamlphp.saml.entra.metadataXml | indent 4 }}
     {{- end }}

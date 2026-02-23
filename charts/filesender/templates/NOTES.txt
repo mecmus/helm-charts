@@ -25,22 +25,24 @@ Pour accéder à FileSender :
 {{- end }}
 
 Configuration de la base de données :
-{{- if .Values.postgresql.external.enabled }}
-- Base de données externe : {{ .Values.postgresql.external.host }}:{{ .Values.postgresql.external.port }}
-{{- else if .Values.postgresql.internal.enabled }}
-- Base de données interne PostgreSQL déployée dans le cluster
+FileSender is configured with:
+{{- if .Values.postgresql.internal.enabled }}
+- Internal PostgreSQL database
+{{- else }}
+- External PostgreSQL database: {{ .Values.postgresql.external.host }}
 {{- end }}
 
-Configuration de l'authentification :
-{{- if eq .Values.simplesamlphp.authType "saml" }}
-- Type : SAML via SimpleSAMLphp
-- Source d'authentification : {{ .Values.simplesamlphp.authenticationSource }}
-{{- if .Values.simplesamlphp.idp.entityId }}
-- IdP configuré : {{ .Values.simplesamlphp.idp.entityId }}
+Authentication:
+{{- if eq .Values.simplesamlphp.saml.provider "entra" }}
+- Microsoft Entra ID (SAML)
+  Tenant ID: {{ .Values.simplesamlphp.saml.entra.tenantId }}
+{{- else if eq .Values.simplesamlphp.saml.provider "other" }}
+- Generic SAML Provider
+{{- else }}
+- Local User Authentication (Testing Mode)
 {{- end }}
-{{- else if eq .Values.simplesamlphp.authType "fake" }}
-- Type : Authentification de test (fake)
-{{- end }}
+
+FileSender URL: {{ .Values.filesender.siteUrl }}
 
 {{- if .Values.cleanup.enabled }}
 Nettoyage automatique :
