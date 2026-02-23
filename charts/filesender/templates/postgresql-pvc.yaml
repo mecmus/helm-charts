@@ -1,0 +1,18 @@
+{{- if and .Values.postgresql.internal.enabled .Values.postgresql.internal.persistence.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "filesender.fullname" . }}-postgresql
+  labels:
+    {{- include "filesender.labels" . | nindent 4 }}
+    app.kubernetes.io/component: database
+spec:
+  accessModes:
+    - {{ .Values.postgresql.internal.persistence.accessMode }}
+  resources:
+    requests:
+      storage: {{ .Values.postgresql.internal.persistence.size | quote }}
+  {{- if .Values.postgresql.internal.persistence.storageClass }}
+  storageClassName: {{ .Values.postgresql.internal.persistence.storageClass | quote }}
+  {{- end }}
+{{- end }}

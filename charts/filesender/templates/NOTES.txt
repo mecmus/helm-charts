@@ -1,35 +1,52 @@
-1. Get the application URL by running these commands:
-{{- if .Values.httpRoute.enabled }}
-{{- if .Values.httpRoute.hostnames }}
-    export APP_HOSTNAME={{ .Values.httpRoute.hostnames | first }}
-{{- else }}
-    export APP_HOSTNAME=$(kubectl get --namespace {{(first .Values.httpRoute.parentRefs).namespace | default .Release.Namespace }} gateway/{{ (first .Values.httpRoute.parentRefs).name }} -o jsonpath="{.spec.listeners[0].hostname}")
-  {{- end }}
-{{- if and .Values.httpRoute.rules (first .Values.httpRoute.rules).matches (first (first .Values.httpRoute.rules).matches).path.value }}
-    echo "Visit http://$APP_HOSTNAME{{ (first (first .Values.httpRoute.rules).matches).path.value }} to use your application"
+FileSender v{{ .Chart.AppVersion }} a été déployé avec succès !
 
-    NOTE: Your HTTPRoute depends on the listener configuration of your gateway and your HTTPRoute rules.
-    The rules can be set for path, method, header and query parameters.
-    You can check the gateway configuration with 'kubectl get --namespace {{(first .Values.httpRoute.parentRefs).namespace | default .Release.Namespace }} gateway/{{ (first .Values.httpRoute.parentRefs).name }} -o yaml'
-{{- end }}
-{{- else if .Values.ingress.enabled }}
+Pour accéder à FileSender :
+
+{{- if .Values.ingress.enabled }}
+1. Via Ingress:
 {{- range $host := .Values.ingress.hosts }}
-  {{- range .paths }}
-  http{{ if $.Values.ingress.tls }}s{{ end }}://{{ $host.host }}{{ .path }}
-  {{- end }}
+  http{{ if $.Values.ingress.tls }}s{{ end }}://{{ $host.host }}
 {{- end }}
 {{- else if contains "NodePort" .Values.service.type }}
+1. Obtenez l'URL de l'application en exécutant :
   export NODE_PORT=$(kubectl get --namespace {{ .Release.Namespace }} -o jsonpath="{.spec.ports[0].nodePort}" services {{ include "filesender.fullname" . }})
   export NODE_IP=$(kubectl get nodes --namespace {{ .Release.Namespace }} -o jsonpath="{.items[0].status.addresses[0].address}")
   echo http://$NODE_IP:$NODE_PORT
 {{- else if contains "LoadBalancer" .Values.service.type }}
-     NOTE: It may take a few minutes for the LoadBalancer IP to be available.
-           You can watch its status by running 'kubectl get --namespace {{ .Release.Namespace }} svc -w {{ include "filesender.fullname" . }}'
+1. Obtenez l'URL de l'application en exécutant :
+     NOTE: La création d'un LoadBalancer peut prendre quelques minutes
   export SERVICE_IP=$(kubectl get svc --namespace {{ .Release.Namespace }} {{ include "filesender.fullname" . }} --template "{{"{{ range (index .status.loadBalancer.ingress 0) }}{{.}}{{ end }}"}}")
   echo http://$SERVICE_IP:{{ .Values.service.port }}
 {{- else if contains "ClusterIP" .Values.service.type }}
+1. Exécutez ces commandes pour accéder via port-forward :
   export POD_NAME=$(kubectl get pods --namespace {{ .Release.Namespace }} -l "app.kubernetes.io/name={{ include "filesender.name" . }},app.kubernetes.io/instance={{ .Release.Name }}" -o jsonpath="{.items[0].metadata.name}")
-  export CONTAINER_PORT=$(kubectl get pod --namespace {{ .Release.Namespace }} $POD_NAME -o jsonpath="{.spec.containers[0].ports[0].containerPort}")
-  echo "Visit http://127.0.0.1:8080 to use your application"
-  kubectl --namespace {{ .Release.Namespace }} port-forward $POD_NAME 8080:$CONTAINER_PORT
+  echo "Visitez http://127.0.0.1:8080 pour utiliser votre application"
+  kubectl --namespace {{ .Release.Namespace }} port-forward $POD_NAME 8080:80
 {{- end }}
+
+Configuration de la base de données :
+FileSender is configured with:
+{{- if .Values.postgresql.internal.enabled }}
+- Internal PostgreSQL database
+{{- else }}
+- External PostgreSQL database: {{ .Values.postgresql.external.host }}
+{{- end }}
+
+Authentication:
+{{- if eq .Values.simplesamlphp.saml.provider "entra" }}
+- Microsoft Entra ID (SAML)
+  Tenant ID: {{ .Values.simplesamlphp.saml.entra.tenantId }}
+{{- else if eq .Values.simplesamlphp.saml.provider "other" }}
+- Generic SAML Provider
+{{- else }}
+- Local User Authentication (Testing Mode)
+{{- end }}
+
+FileSender URL: {{ .Values.filesender.siteUrl }}
+
+{{- if .Values.cleanup.enabled }}
+Nettoyage automatique :
+- Planifié : {{ .Values.cleanup.schedule }}
+{{- end }}
+
+Pour plus d'informations, consultez le README du chart.

@@ -5,89 +5,286 @@ metadata:
   labels:
     {{- include "filesender.labels" . | nindent 4 }}
 spec:
-  {{- if not .Values.autoscaling.enabled }}
   replicas: {{ .Values.replicaCount }}
-  {{- end }}
   selector:
     matchLabels:
       {{- include "filesender.selectorLabels" . | nindent 6 }}
   template:
     metadata:
-      {{- with .Values.podAnnotations }}
       annotations:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
+        checksum/config-filesender: {{ include (print $.Template.BasePath "/configmap-filesender.yaml") . | sha256sum }}
+        checksum/config-simplesamlphp: {{ include (print $.Template.BasePath "/configmap-simplesamlphp.yaml") . | sha256sum }}
+        checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
       labels:
-        {{- include "filesender.labels" . | nindent 8 }}
-        {{- with .Values.podLabels }}
-        {{- toYaml . | nindent 8 }}
-        {{- end }}
+        {{- include "filesender.selectorLabels" . | nindent 8 }}
     spec:
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      serviceAccountName: {{ include "filesender.serviceAccountName" . }}
-      {{- with .Values.podSecurityContext }}
       securityContext:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      initContainers:
+        - name: db-init
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: ["php", "/opt/filesender/filesender/scripts/upgrade/database.php"]
+          env:
+            # PostgreSQL credentials
+            {{- if .Values.postgresql.external.enabled }}
+            {{- if .Values.postgresql.external.existingSecret }}
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.postgresql.external.existingSecret }}
+                  key: {{ .Values.postgresql.external.secretKey }}
+            {{- else }}
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "filesender.fullname" . }}
+                  key: postgres-external-password
+            {{- end }}
+            {{- else if .Values.postgresql.internal.enabled }}
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "filesender.fullname" . }}
+                  key: postgres-password
+            {{- end }}
+          volumeMounts:
+            - name: filesender-config
+              mountPath: /opt/filesender/filesender/config/config.php
+              subPath: config.php
+            - name: tmp
+              mountPath: {{ .Values.filesender.paths.tmp | default "/opt/filesender/filesender/tmp" }}
+        
+        {{- if or (eq .Values.simplesamlphp.saml.provider "entra") (and (eq .Values.simplesamlphp.saml.provider "other") (or .Values.simplesamlphp.saml.other.metadataUrl .Values.simplesamlphp.saml.other.metadataXml)) }}
+        - name: metadata-fetcher
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          # Run metarefresh using a direct PHP script that explicitly loads our config
+          command: 
+            - /bin/sh
+            - -c
+            - |
+              echo "Starting metadata fetch..."
+              php -r "define('SIMPLESAMLPATH', '/opt/filesender/simplesaml/'); require_once(SIMPLESAMLPATH . 'lib/_autoload.php'); use SimpleSAML\Configuration; use SimpleSAML\Module\metarefresh\MetaRefresh; try { \$config = Configuration::getInstance(); \$mconfig = Configuration::getConfig('config-metarefresh.php'); \$mf = new MetaRefresh(\$config, \$mconfig); \$mf->runRefresh('hourly'); echo 'Metadata updated successfully'; } catch (Exception \$e) { echo 'Error updating metadata: ' . \$e->getMessage(); exit(1); }"
+          volumeMounts:
+            - name: simplesamlphp-config
+              mountPath: /opt/filesender/simplesaml/config/config.php
+              subPath: config.php
+            - name: simplesamlphp-config
+              mountPath: /opt/filesender/simplesaml/config/config-metarefresh.php
+              subPath: config-metarefresh.php
+            - name: metadata-generated
+              mountPath: /opt/filesender/simplesaml/metadata/generated
+            {{- if or .Values.simplesamlphp.saml.entra.metadataXml .Values.simplesamlphp.saml.other.metadataXml }}
+            - name: metadata-raw
+              mountPath: /var/simplesaml/metadata-raw/metadata.xml
+              subPath: metadata-raw.xml
+            {{- end }}
+        {{- end }}
+
       containers:
         - name: {{ .Chart.Name }}
-          {{- with .Values.securityContext }}
-          securityContext:
-            {{- toYaml . | nindent 12 }}
-          {{- end }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
             - name: http
-              containerPort: {{ .Values.service.port }}
+              containerPort: 80
               protocol: TCP
-          {{- with .Values.livenessProbe }}
+          env:
+            # PostgreSQL credentials
+            {{- if .Values.postgresql.external.enabled }}
+            {{- if .Values.postgresql.external.existingSecret }}
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.postgresql.external.existingSecret }}
+                  key: {{ .Values.postgresql.external.secretKey }}
+            {{- else }}
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "filesender.fullname" . }}
+                  key: postgres-external-password
+            {{- end }}
+            {{- else if .Values.postgresql.internal.enabled }}
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "filesender.fullname" . }}
+                  key: postgres-password
+            {{- end }}
+            
+            # SimpleSAMLphp credentials
+            - name: SIMPLESAMLPHP_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "filesender.fullname" . }}
+                  key: simplesamlphp-admin-password
+            - name: SIMPLESAMLPHP_SECRET_SALT
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "filesender.fullname" . }}
+                  key: simplesamlphp-secret-salt
+            
+            {{- if .Values.simplesamlphp.localUsers.enabled }}
+            {{- range .Values.simplesamlphp.localUsers.users }}
+            - name: LOCAL_USER_{{ .username | upper }}_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "filesender.fullname" $ }}
+                  key: local-user-{{ .username }}-password
+            {{- end }}
+            {{- end }}
+          securityContext:
+            {{- toYaml .Values.containerSecurityContext | nindent 12 }}
+          
+          {{- if .Values.livenessProbe.enabled }}
           livenessProbe:
-            {{- toYaml . | nindent 12 }}
+            {{- toYaml (omit .Values.livenessProbe "enabled") | nindent 12 }}
           {{- end }}
-          {{- with .Values.readinessProbe }}
+          
+          {{- if .Values.readinessProbe.enabled }}
           readinessProbe:
-            {{- toYaml . | nindent 12 }}
+            {{- toYaml (omit .Values.readinessProbe "enabled") | nindent 12 }}
           {{- end }}
-          {{- with .Values.resources }}
+          
           resources:
-            {{- toYaml . | nindent 12 }}
-          {{- end }}
+            {{- toYaml .Values.resources | nindent 12 }}
+          
           volumeMounts:
-            - name: config
-              mountPath: /var/www/html/config/config.php
+            - name: filesender-config
+              mountPath: /opt/filesender/filesender/config/config.php
               subPath: config.php
-              readOnly: true
-            - name: storage
-              mountPath: /var/www/html/files
+            - name: simplesamlphp-config
+              mountPath: /opt/filesender/simplesaml/config/config.php
+              subPath: config.php
+            - name: simplesamlphp-config
+              mountPath: /opt/filesender/simplesaml/config/config-metarefresh.php
+              subPath: config-metarefresh.php
+            - name: simplesamlphp-authsources
+              mountPath: /opt/filesender/simplesaml/config/authsources.php
+              subPath: authsources.php
+            {{- if .Values.simplesamlphp.localUsers.enabled }}
+            - name: simplesamlphp-metadata-idp-hosted
+              mountPath: /opt/filesender/simplesaml/metadata/saml20-idp-hosted.php
+              subPath: saml20-idp-hosted.php
+            {{- end }}
+            - name: simplesamlphp-metadata
+              mountPath: /opt/filesender/simplesaml/metadata/saml20-idp-remote.php
+              subPath: saml20-idp-remote.php
+            {{- if .Values.persistence.enabled }}
+            - name: filesender-data
+              mountPath: {{ .Values.filesender.storage.path }}
+            {{- end }}
             - name: tmp
-              mountPath: /var/www/html/tmp
+              mountPath: {{ .Values.filesender.paths.tmp | default "/opt/filesender/filesender/tmp" }}
             - name: log
-              mountPath: /var/www/html/log
-          {{- with .Values.volumeMounts }}
-            {{- toYaml . | nindent 12 }}
-          {{- end }}
+              mountPath: {{ .Values.filesender.paths.log | default "/opt/filesender/filesender/log" }}
+            - name: simplesamlphp-metadata-sp-remote
+              mountPath: /opt/filesender/simplesaml/metadata/saml20-sp-remote.php
+              subPath: saml20-sp-remote.php    
+            - name: simplesamlphp-cert
+              mountPath: /opt/filesender/simplesaml/cert
+              readOnly: true
+            - name: metadata-generated
+              mountPath: /opt/filesender/simplesaml/metadata/generated
+            {{- if or .Values.simplesamlphp.saml.entra.metadataXml .Values.simplesamlphp.saml.other.metadataXml }}
+            - name: metadata-raw
+              mountPath: /var/simplesaml/metadata-raw/metadata.xml
+              subPath: metadata-raw.xml
+            {{- end }}
+        
+        {{- if or (eq .Values.simplesamlphp.saml.provider "entra") (and (eq .Values.simplesamlphp.saml.provider "other") .Values.simplesamlphp.saml.other.metadataUrl) }}
+        # Sidecar for periodic metadata refresh (instead of CronJob, to share the emptyDir volume)
+        - name: metadata-refresher
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: 
+            - /bin/sh
+            - -c
+            - |
+              while true; do
+                echo "Sleeping 1 hour..."
+                sleep 3600
+                echo "Refreshing metadata..."
+                php -r "define('SIMPLESAMLPATH', '/opt/filesender/simplesaml/'); require_once(SIMPLESAMLPATH . 'lib/_autoload.php'); use SimpleSAML\Configuration; use SimpleSAML\Module\metarefresh\MetaRefresh; try { \$config = Configuration::getInstance(); \$mconfig = Configuration::getConfig('config-metarefresh.php'); \$mf = new MetaRefresh(\$config, \$mconfig); \$mf->runRefresh('hourly'); echo 'Metadata updated successfully'; } catch (Exception \$e) { echo 'Error updating metadata: ' . \$e->getMessage(); }"
+              done
+          volumeMounts:
+            - name: simplesamlphp-config
+              mountPath: /opt/filesender/simplesaml/config/config.php
+              subPath: config.php
+            - name: simplesamlphp-config
+              mountPath: /opt/filesender/simplesaml/config/config-metarefresh.php
+              subPath: config-metarefresh.php
+            - name: metadata-generated
+              mountPath: /opt/filesender/simplesaml/metadata/generated
+        {{- end }}
+
       volumes:
-        - name: config
+        - name: simplesamlphp-cert
+          secret:
+            secretName: {{ include "filesender.fullname" . }}-simplesamlphp-cert
+        - name: simplesamlphp-metadata-sp-remote
           configMap:
-            name: {{ include "filesender.fullname" . }}-config
-        - name: storage
-          {{- if .Values.persistence.enabled }}
+            name: {{ include "filesender.fullname" . }}-simplesamlphp
+            items:
+              - key: saml20-sp-remote.php
+                path: saml20-sp-remote.php
+        - name: filesender-config
+          configMap:
+            name: {{ include "filesender.fullname" . }}-filesender
+        - name: simplesamlphp-config
+          configMap:
+            name: {{ include "filesender.fullname" . }}-simplesamlphp
+            items:
+              - key: config.php
+                path: config.php
+              - key: config-metarefresh.php
+                path: config-metarefresh.php 
+        - name: simplesamlphp-authsources
+          configMap:
+            name: {{ include "filesender.fullname" . }}-simplesamlphp
+            items:
+              - key: authsources.php
+                path: authsources.php
+        {{- if .Values.simplesamlphp.localUsers.enabled }}
+        - name: simplesamlphp-metadata-idp-hosted
+          configMap:
+            name: {{ include "filesender.fullname" . }}-simplesamlphp
+            items:
+              - key: saml20-idp-hosted.php
+                path: saml20-idp-hosted.php
+        {{- end }}
+        - name: simplesamlphp-metadata
+          configMap:
+            name: {{ include "filesender.fullname" . }}-simplesamlphp
+            items:
+              - key: saml20-idp-remote.php
+                path: saml20-idp-remote.php
+        {{- if .Values.persistence.enabled }}
+        - name: filesender-data
           persistentVolumeClaim:
-            claimName: {{ include "filesender.fullname" . }}-storage
-          {{- else }}
-          emptyDir: {}
-          {{- end }}
+            claimName: {{ include "filesender.fullname" . }}-data
+        {{- end }}
         - name: tmp
           emptyDir: {}
         - name: log
           emptyDir: {}
-      {{- with .Values.volumes }}
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
+        - name: metadata-generated
+          emptyDir: {}
+        {{- if or .Values.simplesamlphp.saml.entra.metadataXml .Values.simplesamlphp.saml.other.metadataXml }}
+        - name: metadata-raw
+          configMap: 
+            name: {{ include "filesender.fullname" . }}-simplesamlphp
+            items:
+              - key: metadata-raw.xml
+                path: metadata-raw.xml
+        {{- end }}
+      
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
@@ -100,3 +297,4 @@ spec:
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+
