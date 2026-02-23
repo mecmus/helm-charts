@@ -6,7 +6,7 @@ replicaCount: 1
 
 image:
   repository: ghcr.io/mecmus/filesender
-  tag: "3.3"
+  tag: "3.3-php"
   pullPolicy: IfNotPresent
 
 imagePullSecrets: []
@@ -156,7 +156,7 @@ postgresql:
     enabled: true
     image:
       repository: postgres
-      tag: "15-alpine"
+      tag: "3.3-php"
       pullPolicy: IfNotPresent
     database: "filesender"
     username: "filesender"
