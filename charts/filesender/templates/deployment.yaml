@@ -157,6 +157,10 @@ spec:
                   {{- end }}
             - name: GRAPH_FROM_ADDRESS
               value: {{ .Values.filesender.mail.fromAddress | quote }}
+            {{- if .Values.filesender.mail.sendOnBehalfOf }}
+            - name: GRAPH_SEND_ON_BEHALF_OF
+              value: "true"
+            {{- end }}
             {{- end }}
           securityContext:
             {{- toYaml .Values.containerSecurityContext | nindent 12 }}

@@ -150,13 +150,17 @@ data:
     
     // Email configuration
     {{- if .Values.filesender.mail.enabled }}
-    // When Graph API is enabled: FileSender sets the logged-in user as From:
-    // sendmail-graph.py uses this From: as the Graph "from" field (user sharing the file)
-    // and the shared mailbox as "sender" → "sent on behalf of" in Outlook
-    $config['email_from'] = 'sender';
     $config['email_reply_to'] = 'sender';
+    {{- if .Values.filesender.mail.sendOnBehalfOf }}
+    // "Sent on behalf of" mode: FileSender sets the logged-in user as From:
+    // sendmail-graph.py uses this From: as the Graph "from" field
+    // and the shared mailbox as "sender" → "sent on behalf of" in Outlook
+    // Requires Exchange Online Send-on-Behalf permission on the shared mailbox
+    $config['email_from'] = 'sender';
+    {{- else }}
+    $config['email_from'] = '{{ .Values.filesender.mail.fromAddress }}';
+    {{- end }}
     {{- else }}
     $config['email_from'] = '{{ .Values.filesender.emailReplyTo }}';
-    $config['email_reply_to'] = '{{ .Values.filesender.emailReplyTo }}';
     {{- end }}
 

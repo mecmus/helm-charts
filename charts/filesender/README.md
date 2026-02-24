@@ -204,11 +204,9 @@ FileSender peut envoyer des emails de notification (transferts, expirations, inv
 - Réutilise l'application Entra ID déjà configurée pour le SAML SSO (pas de seconde app)
 - Utilise une **shared mailbox gratuite** (aucune licence Microsoft 365 requise)
 - Ne nécessite aucune dépendance externe (stdlib Python uniquement)
-- Affiche l'expéditeur en mode **"envoyé au nom de"** : le destinataire voit *"noreply-filesender@contoso.com au nom de Jean Dupont"* dans Outlook
+- Le `Reply-To` pointe vers l'utilisateur qui a partagé le fichier
 
-Lorsque `filesender.mail.enabled: true`, le chart configure automatiquement :
-- `email_from = 'sender'` — FileSender met l'utilisateur connecté comme expéditeur visible
-- `sendmail-graph.py` utilise ce `From:` comme champ `from` dans Graph API et la shared mailbox comme `sender`
+Optionnellement, vous pouvez activer le mode **"envoyé au nom de"** (`sendOnBehalfOf: true`) pour que les destinataires voient *"noreply-filesender@contoso.com au nom de Jean Dupont"* dans Outlook. Ce mode nécessite la permission Exchange Online "Send on Behalf" sur la shared mailbox (voir [ENTRA_ID_SETUP.md](ENTRA_ID_SETUP.md#f-optionnel-activer-le-mode-envoyé-au-nom-de-sent-on-behalf-of)).
 
 Pour la procédure complète de configuration dans Entra ID, voir [ENTRA_ID_SETUP.md](ENTRA_ID_SETUP.md#6-configurer-lenvoi-demails-via-graph-api-optionnel).
 

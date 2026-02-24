@@ -143,18 +143,43 @@ simplesamlphp:
       applicationId: "YOUR-APP-ID"     # Réutilisé pour SAML et Graph API
 ```
 
-#### f) Comportement "envoyé au nom de" (sent on behalf of)
+#### f) (Optionnel) Activer le mode "envoyé au nom de" (sent on behalf of)
 
-Lorsque Graph API est activé (`filesender.mail.enabled: true`), le chart configure automatiquement FileSender pour utiliser l'email de l'utilisateur connecté comme expéditeur visible. Dans Outlook, les destinataires voient :
+Par défaut, tous les emails sont envoyés depuis la shared mailbox. Le `Reply-To` pointe vers l'utilisateur qui a partagé le fichier, donc les réponses lui parviennent directement.
 
-> *noreply-filesender@contoso.com au nom de Jean Dupont \<jean.dupont@contoso.com\>*
+Si vous souhaitez que les destinataires voient *"noreply-filesender@contoso.com au nom de Jean Dupont"* dans Outlook, vous pouvez activer le mode "envoyé au nom de". **Cela nécessite une permission Exchange Online supplémentaire.**
+
+##### Configurer la permission Exchange Online
+
+Accordez la permission "Send on Behalf" à la shared mailbox pour les utilisateurs concernés :
+
+```powershell
+# Pour tous les utilisateurs d'un groupe
+Set-Mailbox -Identity "noreply-filesender@contoso.com" `
+  -GrantSendOnBehalfTo "FileSender-Users-Group"
+
+# Ou pour des utilisateurs individuels
+Set-Mailbox -Identity "noreply-filesender@contoso.com" `
+  -GrantSendOnBehalfTo @{Add="jean.dupont@contoso.com","marie.martin@contoso.com"}
+```
+
+##### Activer dans les values Helm
+
+```yaml
+filesender:
+  mail:
+    enabled: true
+    fromAddress: "noreply-filesender@contoso.com"
+    clientSecret: "votre-client-secret"
+    sendOnBehalfOf: true  # Requiert la permission Exchange ci-dessus
+```
 
 Fonctionnement :
 - **`sender`** = `noreply-filesender@contoso.com` — la shared mailbox qui envoie techniquement via Graph API
-- **`from`** = `Jean Dupont <jean.dupont@contoso.com>` — l'utilisateur connecté qui partage le fichier (champ `email_from = 'sender'` dans FileSender)
+- **`from`** = `Jean Dupont <jean.dupont@contoso.com>` — l'utilisateur connecté qui partage le fichier
 - **`Reply-To`** = l'utilisateur connecté — les réponses lui parviennent directement
 
-Si l'utilisateur connecté n'a pas d'adresse email dans Entra ID, ou si elle correspond à la shared mailbox, l'email est envoyé uniquement au nom de la shared mailbox (comportement standard).
+> **Sans** cette permission Exchange, vous obtiendrez l'erreur `ErrorSendAsDenied`. Laissez `sendOnBehalfOf: false` (valeur par défaut) dans ce cas.
 
 ## Configuration Helm
 

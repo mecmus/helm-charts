@@ -36,6 +36,10 @@ filesender:
     # Ou référencer un secret Kubernetes existant
     existingSecret: ""
     existingSecretKey: "graph-client-secret"
+    # Activer le mode "envoyé au nom de" (sent on behalf of)
+    # Quand activé, les destinataires voient "shared-mailbox au nom de Utilisateur"
+    # Requiert la permission Exchange Online "Send on Behalf" sur la shared mailbox
+    sendOnBehalfOf: false
   
   # Session configuration
   sessionCookiePath: "/"
