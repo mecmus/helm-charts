@@ -1,0 +1,19 @@
+overleaf:
+  siteUrl: "https://overleaf.example.com"
+
+oauth2Proxy:
+  enabled: true
+  provider: "oidc"
+  oidcIssuerUrl: "https://login.microsoftonline.com/YOUR_TENANT_ID/v2.0"
+  existingSecret: "overleaf-oidc-secret"
+
+mongodb:
+  enabled: false
+  external:
+    url: "mongodb://mongo.database.svc.cluster.local:27017/sharelatex"
+
+redis:
+  enabled: false
+  external:
+    host: "redis.database.svc.cluster.local"
+    port: 6379

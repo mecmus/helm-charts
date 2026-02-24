@@ -1,0 +1,32 @@
+overleaf:
+  siteUrl: "https://overleaf.example.com"
+  appName: "Overleaf"
+  adminEmail: "admin@example.com"
+
+oauth2Proxy:
+  enabled: true
+  provider: "oidc"
+  oidcIssuerUrl: "https://keycloak.example.com/realms/overleaf"
+  clientId: "overleaf"
+  clientSecret: "YOUR_KEYCLOAK_CLIENT_SECRET"
+  cookieSecret: "GENERATE_COOKIE_SECRET"
+  emailDomains:
+    - "*"
+
+ingress:
+  enabled: true
+  hosts:
+    - host: overleaf.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: overleaf-tls
+      hosts:
+        - overleaf.example.com
+
+mongodb:
+  enabled: true
+
+redis:
+  enabled: true
