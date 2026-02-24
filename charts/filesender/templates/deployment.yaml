@@ -184,6 +184,8 @@ spec:
               mountPath: {{ .Values.filesender.paths.tmp | default "/opt/filesender/filesender/tmp" }}
             - name: log
               mountPath: {{ .Values.filesender.paths.log | default "/opt/filesender/filesender/log" }}
+            - name: nginx-tmp
+              mountPath: /var/lib/nginx/tmp
             - name: simplesamlphp-metadata-sp-remote
               mountPath: /opt/filesender/simplesaml/metadata/saml20-sp-remote.php
               subPath: saml20-sp-remote.php    
@@ -273,6 +275,8 @@ spec:
         - name: tmp
           emptyDir: {}
         - name: log
+          emptyDir: {}
+        - name: nginx-tmp
           emptyDir: {}
         - name: metadata-generated
           emptyDir: {}
