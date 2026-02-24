@@ -122,12 +122,25 @@ def build_message(msg, from_address, extra_recipients):
         body_content = body_text or ""
         body_type = "Text"
 
+    # Extract the original From: header set by FileSender (the logged-in user)
+    original_from = addr_list(msg.get("From", ""))
+
     message = {
         "subject": subject,
         "body": {"contentType": body_type, "content": body_content},
-        "from": {"emailAddress": {"address": from_address}},
+        "sender": {"emailAddress": {"address": from_address}},  # shared mailbox (technical sender)
         "toRecipients": to,
     }
+
+    # If FileSender set a From: different from the shared mailbox → "sent on behalf of"
+    if (
+        original_from
+        and original_from[0]["emailAddress"]["address"].lower() != from_address.lower()
+    ):
+        message["from"] = original_from[0]  # the user who is sharing
+    else:
+        message["from"] = {"emailAddress": {"address": from_address}}
+
     if cc:
         message["ccRecipients"] = cc
     if bcc:

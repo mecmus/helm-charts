@@ -143,6 +143,19 @@ simplesamlphp:
       applicationId: "YOUR-APP-ID"     # Réutilisé pour SAML et Graph API
 ```
 
+#### f) Comportement "envoyé au nom de" (sent on behalf of)
+
+Lorsque Graph API est activé (`filesender.mail.enabled: true`), le chart configure automatiquement FileSender pour utiliser l'email de l'utilisateur connecté comme expéditeur visible. Dans Outlook, les destinataires voient :
+
+> *noreply-filesender@contoso.com au nom de Jean Dupont \<jean.dupont@contoso.com\>*
+
+Fonctionnement :
+- **`sender`** = `noreply-filesender@contoso.com` — la shared mailbox qui envoie techniquement via Graph API
+- **`from`** = `Jean Dupont <jean.dupont@contoso.com>` — l'utilisateur connecté qui partage le fichier (champ `email_from = 'sender'` dans FileSender)
+- **`Reply-To`** = l'utilisateur connecté — les réponses lui parviennent directement
+
+Si l'utilisateur connecté n'a pas d'adresse email dans Entra ID, ou si elle correspond à la shared mailbox, l'email est envoyé uniquement au nom de la shared mailbox (comportement standard).
+
 ## Configuration Helm
 
 ### Fichier values.yaml
