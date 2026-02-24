@@ -8,6 +8,14 @@ on:
     branches:
       - main
       - develop
+  pull_request:
+    paths:
+      - 'docker/filesender/**'
+      - '.github/workflows/filesender-image.yml'
+    types:
+      - opened
+      - synchronize
+      - reopened
 
 jobs:
   build:
@@ -20,6 +28,7 @@ jobs:
         uses: actions/checkout@v6
 
       - name: Login to DHI Registry
+        if: github.event_name == 'push'
         uses: docker/login-action@v3
         with:
           registry: dhi.io
@@ -43,7 +52,8 @@ jobs:
           echo "php_version=${PHP_VERSION}" >> "$GITHUB_OUTPUT"
           echo "image_tag=${FS_VERSION}-php${PHP_VERSION}" >> "$GITHUB_OUTPUT"
 
-      - name: Build and push
+      - name: Build and push (push to main/develop)
+        if: github.event_name == 'push'
         uses: docker/build-push-action@v6
         with:
           context: ./docker/filesender
@@ -52,8 +62,17 @@ jobs:
             ghcr.io/${{ github.repository_owner }}/filesender:${{ steps.vars.outputs.image_tag }}
             ghcr.io/${{ github.repository_owner }}/filesender:latest
 
+      - name: Build and push (PR)
+        if: github.event_name == 'pull_request'
+        uses: docker/build-push-action@v6
+        with:
+          context: ./docker/filesender
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/filesender:pr-${{ github.event.pull_request.number }}
+
       - name: Update Helm Chart
-        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
+        if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
         run: |
           CHART_FILE="charts/filesender/Chart.yaml"
           VALUES_FILE="charts/filesender/values.yaml"
