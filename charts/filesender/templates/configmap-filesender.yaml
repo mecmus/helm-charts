@@ -147,4 +147,8 @@ data:
     $config['auth_sp_saml_email_attribute'] = '{{ .Values.simplesamlphp.saml.other.attributes.email }}';
     $config['auth_sp_saml_name_attribute'] = '{{ .Values.simplesamlphp.saml.other.attributes.name }}';
     {{- end }}
+    
+    // Email configuration
+    $config['email_from'] = '{{ .Values.filesender.mail.fromAddress | default .Values.filesender.emailReplyTo }}';
+    $config['email_reply_to'] = 'sender';
 

@@ -22,6 +22,21 @@ filesender:
   emailReplyTo: "noreply@example.com"
   defaultTimezone: "Europe/Paris"
   
+  # Configuration email via Microsoft Graph API
+  # Permet d'envoyer les emails de notification via une shared mailbox Exchange Online
+  # Utilise la même application Entra ID que pour le SAML SSO
+  # Voir ENTRA_ID_SETUP.md pour la configuration complète
+  mail:
+    enabled: false
+    # Adresse d'envoi (shared mailbox Exchange Online, pas de licence requise)
+    fromAddress: "noreply-filesender@example.com"
+    # Client secret de l'application Entra ID (la même que pour le SAML)
+    # Le tenantId et applicationId sont récupérés depuis simplesamlphp.saml.entra.*
+    clientSecret: ""
+    # Ou référencer un secret Kubernetes existant
+    existingSecret: ""
+    existingSecretKey: "graph-client-secret"
+  
   # Session configuration
   sessionCookiePath: "/"
   auth:

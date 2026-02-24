@@ -1,80 +1,44 @@
 # Exemple de configuration pour Microsoft Entra ID (Azure AD)
 # Ce fichier montre comment configurer FileSender avec Entra ID comme fournisseur d'identité
+# et envoyer les emails via Microsoft Graph API (shared mailbox, pas de licence requise)
 
-# Configuration FileSender
 filesender:
-  # URL publique de votre instance FileSender
   siteUrl: "https://filesender.example.com"
   siteName: "FileSender"
   admin: "admin@example.com"
   adminEmail: "admin@example.com"
   emailReplyTo: "noreply@example.com"
   
-  # ... autres configurations filesender ...
+  # Email via Microsoft Graph API
+  # Réutilise la même application Entra ID que le SAML SSO
+  # Le tenantId et applicationId sont pris depuis simplesamlphp.saml.entra.*
+  mail:
+    enabled: true
+    fromAddress: "noreply-filesender@example.com"  # Shared mailbox (gratuite, pas de licence)
+    clientSecret: "votre-client-secret"  # Créé dans Entra ID > App > Certificates & secrets
 
-# Configuration SimpleSAMLphp pour Microsoft Entra ID
 simplesamlphp:
   # IMPORTANT: Désactiver les utilisateurs locaux pour utiliser Entra ID
   localUsers:
     enabled: false
   
-  # Configuration Microsoft Entra ID
-  entraId:
-    # Activer l'intégration Entra ID
-    enabled: true
-    
-    # Tenant ID (GUID) trouvé dans Azure Portal > Entra ID > Vue d'ensemble
-    # Exemple: "12345678-1234-1234-1234-123456789abc"
-    tenantId: "YOUR-TENANT-ID-HERE"
-    
-    # Application (Client) ID de votre application FileSender dans Entra ID
-    # Trouvé dans Azure Portal > Applications d'entreprise > FileSender > Vue d'ensemble
-    clientId: "YOUR-CLIENT-ID-HERE"
-    
-    # Mapping des attributs Entra ID
-    attributes:
-      # Attribut email dans les claims Entra ID
-      email: "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress"
-      # Attribut nom d'utilisateur
-      name: "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name"
-      # Attribut identifiant unique
-      uid: "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier"
-  
-  # Configuration IdP (pour le certificat)
-  idp:
-    # Certificat de signature SAML d'Entra ID (optionnel si vous utilisez metadataUrl)
-    # Téléchargé depuis Azure Portal > Applications d'entreprise > FileSender > 
-    # Single sign-on > Certificat de signature SAML > Certificat (Base64)
-    # IMPORTANT: Mettre le contenu du certificat sur une seule ligne, sans les lignes 
-    # -----BEGIN CERTIFICATE----- et -----END CERTIFICATE-----
-    certificate: ""
-    
-    # Alternative: URL des métadonnées de fédération
-    # Trouvée dans Azure Portal > Applications d'entreprise > FileSender > 
-    # Single sign-on > URL des métadonnées de fédération d'application
-    # Exemple: "https://login.microsoftonline.com/YOUR-TENANT-ID/federationmetadata/2007-06/federationmetadata.xml"
-    metadataUrl: ""
+  saml:
+    provider: "entra"
+    entra:
+      tenantId: "YOUR-TENANT-ID"
+      applicationId: "YOUR-APP-ID"
+      # metadataUrl est auto-construit à partir de tenantId et applicationId
+      # Override optionnel : metadataUrl: "https://login.microsoftonline.com/YOUR-TENANT-ID/federationmetadata/2007-06/federationmetadata.xml?appid=YOUR-APP-ID"
 
 # Configuration PostgreSQL (recommandé pour les sessions)
 postgresql:
-  # Utiliser PostgreSQL interne pour tests
   internal:
     enabled: true
     database: "filesender"
     username: "filesender"
-    # Le mot de passe sera généré automatiquement
-    password: ""
-  
-  # Ou utiliser une base PostgreSQL externe (recommandé en production)
-  external:
-    enabled: false
-    host: "postgres.example.com"
-    port: 5432
-    database: "filesender"
-    username: "filesender"
-    password: ""
+    password: ""  # Généré automatiquement
 
-# Configuration Ingress (nécessaire pour HTTPS)
+# Configuration Ingress (HTTPS obligatoire pour SAML)
 ingress:
   enabled: true
   className: "nginx"
@@ -95,6 +59,9 @@ ingress:
 # PROCÉDURE DE CONFIGURATION DANS MICROSOFT ENTRA ID
 # ===============================================================================
 #
+# Une seule application Entra ID est utilisée à la fois pour le SAML SSO et
+# l'envoi d'emails via Graph API. Pas besoin d'en créer une seconde.
+#
 # 1. Créer l'application dans Entra ID:
 #    - Aller dans Azure Portal > Entra ID > Applications d'entreprise
 #    - Cliquer sur "Nouvelle application" > "Créez votre propre application"
@@ -108,25 +75,40 @@ ingress:
 #      * URL de réponse (ACS): https://filesender.example.com/simplesaml/module.php/saml/sp/saml2-acs.php/default-sp
 #
 # 3. Configurer les attributs et revendications:
-#    - Modifier les revendications pour inclure l'email
 #    - S'assurer que l'attribut emailaddress pointe vers user.mail
-#    - Claims par défaut:
-#      * http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress -> user.mail
-#      * http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name -> user.displayname
-#      * http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier -> user.userprincipalname
 #
-# 4. Récupérer les informations pour la configuration:
+# 4. Récupérer les informations:
 #    - Tenant ID: Vue d'ensemble de l'application
-#    - Client ID: Vue d'ensemble de l'application
-#    - Certificat: Section "Certificat de signature SAML" > Télécharger en Base64
-#    - URL des métadonnées: Copier l'"URL des métadonnées de fédération d'application"
+#    - Application (Client) ID: Vue d'ensemble de l'application
 #
 # 5. Assigner des utilisateurs/groupes:
 #    - Aller dans Utilisateurs et groupes
 #    - Ajouter les utilisateurs ou groupes qui peuvent accéder à FileSender
 #
-# 6. Tester la connexion:
-#    - Utiliser le bouton "Tester" dans la configuration SAML
-#    - Ou accéder à https://filesender.example.com et tester l'authentification
+# 6. Configurer l'envoi d'emails via Graph API:
+#
+#    a) Créer un client secret:
+#       - Aller dans l'App registration (pas l'Enterprise Application)
+#         Azure Portal > Entra ID > App registrations > FileSender
+#       - Certificates & secrets > New client secret
+#       - Copier la valeur du secret (visible une seule fois !)
+#       - Mettre cette valeur dans filesender.mail.clientSecret
+#
+#    b) Ajouter la permission API Mail.Send:
+#       - App registrations > FileSender > API permissions > Add a permission
+#       - Microsoft Graph > Application permissions > Mail > Mail.Send
+#       - Cliquer sur "Grant admin consent" (consentement administrateur requis)
+#
+#    c) Créer une shared mailbox Exchange Online (gratuite, pas de licence requise):
+#       PowerShell:
+#         New-Mailbox -Shared -Name "FileSender" -PrimarySmtpAddress "noreply-filesender@contoso.com"
+#
+#    d) (Recommandé) Restreindre l'application à la seule shared mailbox:
+#       PowerShell:
+#         New-ApplicationAccessPolicy \
+#           -AppId "YOUR-APP-ID" \
+#           -PolicyScopeGroupId "noreply-filesender@contoso.com" \
+#           -AccessRight RestrictAccess \
+#           -Description "Restrict FileSender to its shared mailbox"
 #
 # ===============================================================================

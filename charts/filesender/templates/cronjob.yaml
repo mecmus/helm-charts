@@ -48,6 +48,25 @@ spec:
                       name: {{ include "filesender.fullname" . }}
                       key: postgres-password
                 {{- end }}
+                
+                {{- if .Values.filesender.mail.enabled }}
+                - name: GRAPH_TENANT_ID
+                  value: {{ .Values.simplesamlphp.saml.entra.tenantId | quote }}
+                - name: GRAPH_CLIENT_ID
+                  value: {{ .Values.simplesamlphp.saml.entra.applicationId | quote }}
+                - name: GRAPH_CLIENT_SECRET
+                  valueFrom:
+                    secretKeyRef:
+                      {{- if .Values.filesender.mail.existingSecret }}
+                      name: {{ .Values.filesender.mail.existingSecret }}
+                      key: {{ .Values.filesender.mail.existingSecretKey }}
+                      {{- else }}
+                      name: {{ include "filesender.fullname" . }}
+                      key: graph-client-secret
+                      {{- end }}
+                - name: GRAPH_FROM_ADDRESS
+                  value: {{ .Values.filesender.mail.fromAddress | quote }}
+                {{- end }}
               volumeMounts:
                 - name: filesender-config
                   mountPath: /opt/filesender/filesender/config/config.php
