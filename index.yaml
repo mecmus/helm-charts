@@ -13,6 +13,28 @@ entries:
   filesender:
   - apiVersion: v2
     appVersion: "3.3"
+    created: "2026-02-24T16:49:22.446854541Z"
+    description: FileSender v3.3 - Application web open-source de partage de fichiers
+      volumineux avec SimpleSAMLphp et Nginx intégrés
+    digest: 05474ae240732a606eabfd61a8de4a471d41d4a48e7b7fe0257fd12b54ecc026
+    home: https://github.com/mecmus/helm-charts
+    keywords:
+    - filesender
+    - file-sharing
+    - saml
+    - simplesamlphp
+    maintainers:
+    - name: mecmus
+    name: filesender
+    sources:
+    - https://github.com/filesender/filesender
+    - https://github.com/simplesamlphp/simplesamlphp
+    type: application
+    urls:
+    - https://github.com/mecmus/helm-charts/releases/download/filesender-3.3.8/filesender-3.3.8.tgz
+    version: 3.3.8
+  - apiVersion: v2
+    appVersion: "3.3"
     created: "2026-01-18T11:56:03.829826961Z"
     description: A Helm chart for Kubernetes
     digest: dc4d7403d11c8f6f7afba044333eb4da1b33e864339f33d8ecb8e77ac2117cf7
@@ -92,4 +114,4 @@ entries:
     urls:
     - https://github.com/mecmus/helm-charts/releases/download/plmlatex-0.1.0/plmlatex-0.1.0.tgz
     version: 0.1.0
-generated: "2026-02-18T08:18:14.329014761Z"
+generated: "2026-02-24T16:49:22.446887934Z"
