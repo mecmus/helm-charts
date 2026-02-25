@@ -48,10 +48,32 @@ filesender:
   
   # Stockage des fichiers
   storage:
-    type: "filesystem"
+    type: "filesystem"  # "filesystem" ou "CloudS3"
     path: "/opt/filesender/filesender/files"
     shredPath: "/opt/filesender/filesender/shredfiles"
     usageWarning: 20
+
+    # Configuration S3 (utilisé uniquement quand type: "CloudS3")
+    s3:
+      endpoint: ""           # URL de l'API S3 (ex: "https://s3.amazonaws.com" ou "https://minio.example.com:9000")
+      region: "us-east-1"
+      version: "latest"
+      usePathStyleEndpoint: true
+      bucket: ""             # Nom du bucket unique (optionnel)
+      useDailyBucket: false  # Utiliser des buckets quotidiens
+      bucketPrefix: ""       # Préfixe pour les daily buckets
+      bulkDelete: false      # Suppression en lot
+      bulkSize: 1000         # Taille de lot pour suppression
+      # Credentials S3 (sensibles)
+      key: ""                # Clé d'accès S3
+      secret: ""             # Secret S3
+      existingSecret: ""     # Nom d'un secret K8s existant contenant les credentials
+      existingSecretKeyAccessKey: "s3-access-key"   # Clé dans le secret pour l'access key
+      existingSecretKeySecretKey: "s3-secret-key"   # Clé dans le secret pour le secret key
+
+    # Optimisation chunk size (recommandé pour S3: 40MB)
+    uploadChunkSize: ""      # Vide = défaut FileSender (5MB). Pour S3, mettre "41943040" (40MB)
+    downloadChunkSize: ""    # Vide = défaut. Pour S3, mettre la même valeur que uploadChunkSize
   
   # Chemins de fichiers
   paths:

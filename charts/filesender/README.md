@@ -155,12 +155,52 @@ Cela évite les boucles de redirection infinies et garantit la génération corr
 
 ### Stockage des fichiers
 
+#### Filesystem (défaut)
+
 ```yaml
 persistence:
   enabled: true
   size: 100Gi
   storageClass: "fast-ssd"  # Ou "" pour la classe par défaut
   accessMode: ReadWriteOnce
+```
+
+#### Stockage S3 (Cloud)
+
+FileSender supporte le stockage des fichiers sur un backend S3 compatible (AWS S3, MinIO, etc.).
+En mode S3, le PVC pour les fichiers n'est pas créé.
+
+```yaml
+filesender:
+  storage:
+    type: "CloudS3"
+    s3:
+      endpoint: "https://s3.amazonaws.com"
+      region: "eu-west-1"
+      bucket: "my-filesender-bucket"
+      key: "AKIAIOSFODNN7EXAMPLE"
+      secret: "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
+    uploadChunkSize: "41943040"   # 40MB recommandé pour S3
+    downloadChunkSize: "41943040"
+
+# Persistence n'est pas nécessaire en mode S3
+persistence:
+  enabled: false
+```
+
+Pour utiliser un secret Kubernetes existant contenant les credentials S3 :
+
+```yaml
+filesender:
+  storage:
+    type: "CloudS3"
+    s3:
+      endpoint: "https://s3.amazonaws.com"
+      region: "eu-west-1"
+      bucket: "my-filesender-bucket"
+      existingSecret: "my-s3-credentials"
+      existingSecretKeyAccessKey: "access-key"
+      existingSecretKeySecretKey: "secret-key"
 ```
 
 ### Limites et configuration FileSender
