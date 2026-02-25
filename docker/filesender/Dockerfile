@@ -97,6 +97,10 @@ RUN mkdir -p \
     /run/nginx \
     /var/log/nginx \
     /tmp/nginx-body/client_body \
+    /tmp/nginx-body/fastcgi \
+    /tmp/nginx-body/proxy \
+    /tmp/nginx-body/scgi \
+    /tmp/nginx-body/uwsgi \
     && chown -R www-data:www-data \
         /opt/filesender \
         /var/www/files \
@@ -104,7 +108,8 @@ RUN mkdir -p \
         /var/www/log \
         /run/nginx \
         /var/log/nginx \
-        /tmp/nginx-body
+        /tmp/nginx-body \
+        /var/lib/nginx
 
 # Copie de FileSender et SimpleSAMLphp depuis le builder
 COPY --from=builder --chown=www-data:www-data /build/filesender /opt/filesender/filesender
