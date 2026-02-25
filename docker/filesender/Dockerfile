@@ -65,6 +65,7 @@ RUN apk add --no-cache \
     zlib \
     nginx \
     supervisor \
+    python3 \
     zlib-dev \
     postgresql-dev \
     libpng-dev \
@@ -117,6 +118,10 @@ RUN sed -i 's/listen = 127.0.0.1:9000/listen = 127.0.0.1:9000/' /usr/local/etc/p
 
 # php.ini personnalisé - CRITIQUE pour éviter "headers already sent"
 COPY php.ini /usr/local/etc/php/php.ini
+
+# Script sendmail via Microsoft Graph API
+COPY sendmail-graph.py /usr/local/bin/sendmail-graph.py
+RUN chmod +x /usr/local/bin/sendmail-graph.py
 
 # Assurer la writabilité du répertoire de sessions
 RUN chown -R www-data:www-data /var/www/tmp

@@ -197,6 +197,49 @@ resources:
     cpu: "500m"
 ```
 
+### Configuration Email
+
+FileSender peut envoyer des emails de notification (transferts, expirations, invités) via **Microsoft Graph API** en utilisant une shared mailbox Exchange Online. Cette approche :
+
+- Réutilise l'application Entra ID déjà configurée pour le SAML SSO (pas de seconde app)
+- Utilise une **shared mailbox gratuite** (aucune licence Microsoft 365 requise)
+- Ne nécessite aucune dépendance externe (stdlib Python uniquement)
+- Le `Reply-To` pointe vers l'utilisateur qui a partagé le fichier
+
+Optionnellement, vous pouvez activer le mode **"envoyé au nom de"** (`sendOnBehalfOf: true`) pour que les destinataires voient *"noreply-filesender@contoso.com au nom de Jean Dupont"* dans Outlook. Ce mode nécessite la permission Exchange Online "Send on Behalf" sur la shared mailbox (voir [ENTRA_ID_SETUP.md](ENTRA_ID_SETUP.md#f-optionnel-activer-le-mode-envoyé-au-nom-de-sent-on-behalf-of)).
+
+Pour la procédure complète de configuration dans Entra ID, voir [ENTRA_ID_SETUP.md](ENTRA_ID_SETUP.md#6-configurer-lenvoi-demails-via-graph-api-optionnel).
+
+#### Configuration minimale
+
+```yaml
+filesender:
+  mail:
+    enabled: true
+    fromAddress: "noreply-filesender@contoso.com"  # Shared mailbox (gratuite)
+    clientSecret: "votre-client-secret"             # Depuis Entra ID App registration
+
+simplesamlphp:
+  saml:
+    provider: "entra"
+    entra:
+      tenantId: "YOUR-TENANT-ID"    # Réutilisé pour SAML et Graph API
+      applicationId: "YOUR-APP-ID"  # Réutilisé pour SAML et Graph API
+```
+
+> **Note :** `tenantId` et `applicationId` sont partagés entre le SAML et Graph API. Il n'y a pas besoin de les dupliquer.
+
+#### Utiliser un secret Kubernetes existant
+
+```yaml
+filesender:
+  mail:
+    enabled: true
+    fromAddress: "noreply-filesender@contoso.com"
+    existingSecret: "my-graph-secret"
+    existingSecretKey: "graph-client-secret"
+```
+
 ### CronJob de nettoyage
 
 ```yaml
