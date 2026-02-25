@@ -13,6 +13,10 @@ Required environment variables:
     GRAPH_CLIENT_ID      - Application (client) ID
     GRAPH_CLIENT_SECRET  - Client secret value
     GRAPH_FROM_ADDRESS   - Shared mailbox address used as sender
+
+Optional environment variables:
+    GRAPH_SEND_ON_BEHALF_OF - Set to "true" to enable "sent on behalf of" mode.
+                              Requires Exchange Online Send-on-Behalf permission.
 """
 
 import base64
@@ -62,7 +66,7 @@ def addr_list(value):
     return recipients
 
 
-def build_message(msg, from_address, extra_recipients):
+def build_message(msg, from_address, extra_recipients, send_on_behalf_of=False):
     """Convert an email.message.Message into a Graph API sendMail payload."""
     subject = msg.get("Subject", "")
     to = addr_list(msg.get("To", ""))
@@ -128,6 +132,19 @@ def build_message(msg, from_address, extra_recipients):
         "from": {"emailAddress": {"address": from_address}},
         "toRecipients": to,
     }
+
+    # "Sent on behalf of" mode: requires Exchange Online Send-on-Behalf
+    # permission on the shared mailbox for each user.
+    if send_on_behalf_of:
+        original_from = addr_list(msg.get("From", ""))
+        if (
+            original_from
+            and original_from[0]["emailAddress"]["address"].lower()
+            != from_address.lower()
+        ):
+            message["from"] = original_from[0]
+            message["sender"] = {"emailAddress": {"address": from_address}}
+
     if cc:
         message["ccRecipients"] = cc
     if bcc:
@@ -183,7 +200,11 @@ def main():
         log(f"ERROR: Failed to obtain access token: {exc}")
         sys.exit(1)
 
-    payload = build_message(msg, from_address, extra_recipients)
+    send_on_behalf_of = os.environ.get(
+        "GRAPH_SEND_ON_BEHALF_OF", ""
+    ).lower() in ("true", "1", "yes")
+
+    payload = build_message(msg, from_address, extra_recipients, send_on_behalf_of)
 
     try:
         status = send_mail(token, from_address, payload)

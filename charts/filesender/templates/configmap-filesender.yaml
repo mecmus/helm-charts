@@ -149,6 +149,18 @@ data:
     {{- end }}
     
     // Email configuration
-    $config['email_from'] = '{{ .Values.filesender.mail.fromAddress | default .Values.filesender.emailReplyTo }}';
+    {{- if .Values.filesender.mail.enabled }}
     $config['email_reply_to'] = 'sender';
+    {{- if .Values.filesender.mail.sendOnBehalfOf }}
+    // "Sent on behalf of" mode: FileSender sets the logged-in user as From:
+    // sendmail-graph.py uses this From: as the Graph "from" field
+    // and the shared mailbox as "sender" → "sent on behalf of" in Outlook
+    // Requires Exchange Online Send-on-Behalf permission on the shared mailbox
+    $config['email_from'] = 'sender';
+    {{- else }}
+    $config['email_from'] = '{{ .Values.filesender.mail.fromAddress }}';
+    {{- end }}
+    {{- else }}
+    $config['email_from'] = '{{ .Values.filesender.emailReplyTo }}';
+    {{- end }}
 
