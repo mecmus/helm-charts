@@ -20,6 +20,27 @@
       "matchDatasources": ["github-releases"],
       "matchPackageNames": ["filesender/filesender"],
       "extractVersion": "^v?(?<version>.*)$"
+    },
+    {
+      "matchDatasources": ["github-releases"],
+      "matchPackageNames": ["discourse/discourse"],
+      "extractVersion": "^v?(?<version>.*)$",
+      "groupName": "Discourse updates"
+    },
+    {
+      "matchDatasources": ["docker"],
+      "matchPackageNames": ["discourse/base"],
+      "groupName": "Discourse base image updates"
+    },
+    {
+      "matchDatasources": ["docker"],
+      "matchPackageNames": ["postgres"],
+      "groupName": "PostgreSQL image updates"
+    },
+    {
+      "matchDatasources": ["docker"],
+      "matchPackageNames": ["redis"],
+      "groupName": "Redis image updates"
     }
   ],
   "customManagers": [
@@ -40,6 +61,42 @@
       ],
       "depNameTemplate": "filesender/filesender",
       "datasourceTemplate": "github-releases"
+    },
+    {
+      "customType": "regex",
+      "fileMatch": ["docker/discourse/Dockerfile$"],
+      "matchStrings": [
+        "ARG DISCOURSE_BASE_VERSION=(?<currentValue>.*)"
+      ],
+      "depNameTemplate": "discourse/base",
+      "datasourceTemplate": "docker"
+    },
+    {
+      "customType": "regex",
+      "fileMatch": ["docker/discourse/Dockerfile$"],
+      "matchStrings": [
+        "ARG DISCOURSE_VERSION=(?<currentValue>.*)"
+      ],
+      "depNameTemplate": "discourse/discourse",
+      "datasourceTemplate": "github-releases"
+    },
+    {
+      "customType": "regex",
+      "fileMatch": ["charts/discourse/values.yaml$"],
+      "matchStrings": [
+        "repository: postgres\\n\\s+tag: \"(?<currentValue>[^\"]+)\""
+      ],
+      "depNameTemplate": "postgres",
+      "datasourceTemplate": "docker"
+    },
+    {
+      "customType": "regex",
+      "fileMatch": ["charts/discourse/values.yaml$"],
+      "matchStrings": [
+        "repository: redis\\n\\s+tag: \"(?<currentValue>[^\"]+)\""
+      ],
+      "depNameTemplate": "redis",
+      "datasourceTemplate": "docker"
     }
   ]
 }
