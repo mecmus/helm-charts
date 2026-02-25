@@ -4,8 +4,8 @@
 FROM php:8.2-fpm-alpine AS builder
 
 # Arguments de build
-ARG FILESENDER_VERSION=3.3
-ARG SIMPLESAMLPHP_VERSION=2.2.3
+ARG FILESENDER_VERSION=3.5
+ARG SIMPLESAMLPHP_VERSION=2.4.4
 
 # Installation des dépendances de build
 RUN apk add --no-cache --virtual .build-deps \
@@ -38,7 +38,7 @@ RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
 
 # Téléchargement de FileSender depuis master3
 WORKDIR /build
-RUN git clone --depth 1 --branch master3 https://github.com/filesender/filesender.git filesender
+RUN git clone --depth 1 --branch ${FILESENDER_VERSION} https://github.com/filesender/filesender.git filesender
 
 # Téléchargement de SimpleSAMLphp
 RUN curl -L https://github.com/simplesamlphp/simplesamlphp/releases/download/v${SIMPLESAMLPHP_VERSION}/simplesamlphp-${SIMPLESAMLPHP_VERSION}-full.tar.gz | tar xz \
@@ -48,7 +48,7 @@ RUN curl -L https://github.com/simplesamlphp/simplesamlphp/releases/download/v${
 FROM php:8.2-fpm-alpine
 
 # Metadata
-ARG FILESENDER_VERSION=3.3
+ARG FILESENDER_VERSION=3.5
 LABEL org.opencontainers.image.source="https://github.com/mecmus/helm-charts" \
       org.opencontainers.image.description="FileSender v${FILESENDER_VERSION} avec Nginx intégré" \
       org.opencontainers.image.version="${FILESENDER_VERSION}"

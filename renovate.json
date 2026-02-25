@@ -20,6 +20,11 @@
       "matchDatasources": ["github-releases"],
       "matchPackageNames": ["filesender/filesender"],
       "extractVersion": "^v?(?<version>.*)$"
+    },
+    {
+      "matchDatasources": ["github-releases"],
+      "matchPackageNames": ["simplesamlphp/simplesamlphp"],
+      "extractVersion": "^v(?<version>.*)$"
     }
   ],
   "customManagers": [
@@ -39,6 +44,15 @@
         "ARG FILESENDER_VERSION=(?<currentValue>.*)"
       ],
       "depNameTemplate": "filesender/filesender",
+      "datasourceTemplate": "github-releases"
+    },
+    {
+      "customType": "regex",
+      "fileMatch": ["(^|/)Dockerfile$"],
+      "matchStrings": [
+        "ARG SIMPLESAMLPHP_VERSION=(?<currentValue>.*)"
+      ],
+      "depNameTemplate": "simplesamlphp/simplesamlphp",
       "datasourceTemplate": "github-releases"
     }
   ]
