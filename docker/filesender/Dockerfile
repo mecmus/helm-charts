@@ -43,7 +43,7 @@ RUN git clone --depth 1 --branch master3 https://github.com/filesender/filesende
 # Installation des dépendances S3 optionnelles via Composer
 RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer \
     && cd /build/filesender/optional-dependencies/s3 \
-    && composer install --no-dev --no-interaction --optimize-autoloader
+    && composer update --no-dev --no-interaction --optimize-autoloader
 
 # Téléchargement de SimpleSAMLphp
 RUN curl -L https://github.com/simplesamlphp/simplesamlphp/releases/download/v${SIMPLESAMLPHP_VERSION}/simplesamlphp-${SIMPLESAMLPHP_VERSION}-full.tar.gz | tar xz \
