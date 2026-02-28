@@ -26,6 +26,34 @@ jobs:
         env:
           CR_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
 
+      - name: Update README chart table
+        run: |
+          # Build the new table from Chart.yaml files
+          table="| Chart | Version | Description |\n|-------|---------|-------------|"
+          for chart_dir in $(ls -d charts/*/); do
+            chart_yaml="${chart_dir}Chart.yaml"
+            if [ -f "$chart_yaml" ]; then
+              name=$(grep '^name:' "$chart_yaml" | head -1 | sed 's/^name: *//')
+              version=$(grep '^version:' "$chart_yaml" | head -1 | sed 's/^version: *//')
+              description=$(grep '^description:' "$chart_yaml" | head -1 | sed 's/^description: *//')
+              table="${table}\n| [${name}](${chart_dir}) | ${version} | ${description} |"
+            fi
+          done
+
+          # Replace table between markers in README.md
+          awk -v table="$table" '
+            /<!-- CHART-TABLE-START -->/ { print; printf "%s\n", table; skip=1; next }
+            /<!-- CHART-TABLE-END -->/ { skip=0 }
+            !skip { print }
+          ' README.md > README.tmp && mv README.tmp README.md
+
+          # Commit only if there are changes
+          if ! git diff --quiet README.md; then
+            git add README.md
+            git commit -m "docs: mise à jour automatique du tableau de charts dans le README"
+            git push
+          fi
+
       - name: Update release changelogs
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
