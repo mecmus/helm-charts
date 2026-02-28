@@ -48,10 +48,28 @@ filesender:
   
   # Stockage des fichiers
   storage:
-    type: "filesystem"
+    type: "filesystem"  # "filesystem" or "CloudS3"
     path: "/opt/filesender/filesender/files"
     shredPath: "/opt/filesender/filesender/shredfiles"
     usageWarning: 20
+    # S3 Cloud Storage configuration (used when type is "CloudS3")
+    s3:
+      endpoint: ""
+      region: "us-east-1"
+      version: "latest"
+      usePathStyleEndpoint: true
+      bucket: ""
+      useDailyBucket: false
+      bucketPrefix: ""
+      bulkDelete: false
+      bulkSize: 1000
+      # Credentials: use key/secret directly or reference an existing Secret
+      key: ""
+      secret: ""
+      existingSecret: ""
+      existingSecretKeyAccessKey: "s3-access-key"
+      existingSecretKeySecretKey: "s3-secret-key"
+  uploadChunkSize: ""
   
   # Chemins de fichiers
   paths:

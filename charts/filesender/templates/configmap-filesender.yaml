@@ -36,12 +36,38 @@ data:
     
     // Storage configuration
     $config['storage_type'] = '{{ .Values.filesender.storage.type }}';
+    {{- if eq .Values.filesender.storage.type "CloudS3" }}
+    // S3 Cloud Storage configuration
+    $config['cloud_s3_endpoint'] = '{{ .Values.filesender.storage.s3.endpoint }}';
+    $config['cloud_s3_region'] = '{{ .Values.filesender.storage.s3.region | default "us-east-1" }}';
+    $config['cloud_s3_version'] = '{{ .Values.filesender.storage.s3.version | default "latest" }}';
+    $config['cloud_s3_use_path_style_endpoint'] = {{ .Values.filesender.storage.s3.usePathStyleEndpoint | default true }};
+    {{- if .Values.filesender.storage.s3.bucket }}
+    $config['cloud_s3_bucket'] = '{{ .Values.filesender.storage.s3.bucket }}';
+    {{- end }}
+    $config['cloud_s3_use_daily_bucket'] = {{ .Values.filesender.storage.s3.useDailyBucket | default false }};
+    {{- if .Values.filesender.storage.s3.bucketPrefix }}
+    $config['cloud_s3_bucket_prefix'] = '{{ .Values.filesender.storage.s3.bucketPrefix }}';
+    {{- end }}
+    $config['cloud_s3_bulk_delete'] = {{ .Values.filesender.storage.s3.bulkDelete | default false }};
+    $config['cloud_s3_bulk_size'] = {{ .Values.filesender.storage.s3.bulkSize | default 1000 }};
+    {{- else }}
+    // Filesystem storage configuration
     $config['storage_filesystem_path'] = '{{ .Values.filesender.storage.path }}';
     $config['storage_filesystem_shred_path'] = '{{ .Values.filesender.storage.shredPath | default "/opt/filesender/filesender/shredfiles" }}';
     $config['storage_usage_warning'] = {{ .Values.filesender.storage.usageWarning | default 20 }};
+    {{- end }}
     
     // Paths configuration
     $config['tmp_path'] = '{{ .Values.filesender.paths.tmp | default "/opt/filesender/filesender/tmp/" }}';
+    
+    // Chunk size configuration
+    {{- if .Values.filesender.uploadChunkSize }}
+    $config['upload_chunk_size'] = {{ .Values.filesender.uploadChunkSize }};
+    $config['download_chunk_size'] = $config['upload_chunk_size'];
+    // upload_crypted_chunk_padding_size is set by FileSender defaults; this formula follows the FileSender docs
+    $config['upload_crypted_chunk_size'] = $config['upload_chunk_size'] + $config['upload_crypted_chunk_padding_size'];
+    {{- end }}
     
     // Logging configuration
     $config['log_facilities'] = array(
@@ -164,3 +190,11 @@ data:
     $config['email_from'] = '{{ .Values.filesender.emailReplyTo }}';
     {{- end }}
 
+  {{- if eq .Values.filesender.storage.type "CloudS3" }}
+  config_private.php: |
+    <?php
+    $config = array();
+    $config['cloud_s3_key'] = getenv('S3_ACCESS_KEY');
+    $config['cloud_s3_secret'] = getenv('S3_SECRET_KEY');
+    return $config;
+  {{- end }}

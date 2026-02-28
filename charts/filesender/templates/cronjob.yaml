@@ -71,11 +71,39 @@ spec:
                   value: "true"
                 {{- end }}
                 {{- end }}
+                
+                {{- if eq .Values.filesender.storage.type "CloudS3" }}
+                - name: S3_ACCESS_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      {{- if .Values.filesender.storage.s3.existingSecret }}
+                      name: {{ .Values.filesender.storage.s3.existingSecret }}
+                      key: {{ .Values.filesender.storage.s3.existingSecretKeyAccessKey }}
+                      {{- else }}
+                      name: {{ include "filesender.fullname" . }}
+                      key: s3-access-key
+                      {{- end }}
+                - name: S3_SECRET_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      {{- if .Values.filesender.storage.s3.existingSecret }}
+                      name: {{ .Values.filesender.storage.s3.existingSecret }}
+                      key: {{ .Values.filesender.storage.s3.existingSecretKeySecretKey }}
+                      {{- else }}
+                      name: {{ include "filesender.fullname" . }}
+                      key: s3-secret-key
+                      {{- end }}
+                {{- end }}
               volumeMounts:
                 - name: filesender-config
                   mountPath: /opt/filesender/filesender/config/config.php
                   subPath: config.php
-                {{- if .Values.persistence.enabled }}
+                {{- if eq .Values.filesender.storage.type "CloudS3" }}
+                - name: filesender-config
+                  mountPath: /opt/filesender/filesender/config/config_private.php
+                  subPath: config_private.php
+                {{- end }}
+                {{- if and .Values.persistence.enabled (ne .Values.filesender.storage.type "CloudS3") }}
                 - name: filesender-data
                   mountPath: {{ .Values.filesender.storage.path }}
                 {{- end }}
@@ -83,7 +111,7 @@ spec:
             - name: filesender-config
               configMap:
                 name: {{ include "filesender.fullname" . }}-filesender
-            {{- if .Values.persistence.enabled }}
+            {{- if and .Values.persistence.enabled (ne .Values.filesender.storage.type "CloudS3") }}
             - name: filesender-data
               persistentVolumeClaim:
                 claimName: {{ include "filesender.fullname" . }}-data
