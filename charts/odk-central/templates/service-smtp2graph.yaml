@@ -1,0 +1,19 @@
+{{- if .Values.smtp2graph.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "odk-central.smtp2graphHost" . }}
+  labels:
+    {{- include "odk-central.labels" . | nindent 4 }}
+    app.kubernetes.io/component: smtp2graph
+spec:
+  type: ClusterIP
+  ports:
+    - port: 587
+      targetPort: smtp
+      protocol: TCP
+      name: smtp
+  selector:
+    {{- include "odk-central.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: smtp2graph
+{{- end }}

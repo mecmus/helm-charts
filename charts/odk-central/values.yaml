@@ -1,0 +1,135 @@
+# Global
+domain: odk.example.com
+sysadminEmail: admin@example.com
+httpsPort: "443"
+
+# Images
+service:
+  image:
+    repository: ghcr.io/getodk/central-service
+    tag: "v2024.3.1"
+    pullPolicy: IfNotPresent
+  resources: {}
+
+nginx:
+  image:
+    repository: ghcr.io/getodk/central-nginx
+    tag: "v2024.3.1"
+    pullPolicy: IfNotPresent
+  resources: {}
+
+enketo:
+  image:
+    repository: ghcr.io/getodk/central-enketo
+    tag: "v2024.3.1"
+    pullPolicy: IfNotPresent
+  resources: {}
+
+pyxform:
+  image:
+    repository: ghcr.io/getodk/pyxform-http
+    tag: "v4.2.0"
+    pullPolicy: IfNotPresent
+  resources: {}
+
+# PostgreSQL (internal, no Bitnami)
+postgres:
+  image:
+    repository: postgres
+    tag: "14"
+    pullPolicy: IfNotPresent
+  database: odk
+  user: odk
+  # password: set in existingSecret or auto-generated
+  storage:
+    size: 10Gi
+    storageClassName: ""
+  resources: {}
+
+# Redis
+redis:
+  image:
+    repository: redis
+    tag: "7.4.7"
+    pullPolicy: IfNotPresent
+  main:
+    storage:
+      size: 1Gi
+      storageClassName: ""
+  cache:
+    storage:
+      size: 1Gi
+      storageClassName: ""
+
+# SMTP2Graph (SMTP relay → Microsoft Graph API)
+smtp2graph:
+  enabled: true
+  image:
+    repository: smtp2graph/smtp2graph
+    tag: latest
+    pullPolicy: IfNotPresent
+  tenantId: ""
+  clientId: ""
+  clientSecret: ""
+  fromAddress: ""
+
+# Email settings (points to smtp2graph service by default)
+email:
+  from: "noreply@example.com"
+  host: ""  # auto-resolved to smtp2graph service name if empty
+  port: 587
+  secure: false
+  ignoreTLS: true
+  user: ""
+  password: ""
+
+# OIDC (Entra ID)
+oidc:
+  enabled: true
+  issuerUrl: ""
+  clientId: ""
+  clientSecret: ""
+
+# S3 (OVH Graveline)
+s3:
+  enabled: true
+  server: "s3.gra.io.cloud.ovh.net"
+  accessKey: ""
+  secretKey: ""
+  bucketName: "odk-central"
+
+# Sentry (optional)
+sentry:
+  orgSubdomain: "o130137"
+  key: ""
+  project: ""
+  traceRate: "0.1"
+
+# Session
+session:
+  lifetime: 86400
+
+# Transfer data volume
+transfer:
+  storage:
+    size: 10Gi
+    storageClassName: ""
+
+# Ingress
+ingress:
+  enabled: true
+  className: ""
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+  tls:
+    - secretName: odk-central-tls
+      hosts:
+        - odk.example.com
+
+# Existing secrets (optional, if empty chart generates them)
+existingSecrets:
+  enketo: ""
+  postgres: ""
+  smtp2graph: ""
+  oidc: ""
+  s3: ""

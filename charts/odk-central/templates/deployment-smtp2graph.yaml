@@ -1,0 +1,50 @@
+{{- if .Values.smtp2graph.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "odk-central.fullname" . }}-smtp2graph
+  labels:
+    {{- include "odk-central.labels" . | nindent 4 }}
+    app.kubernetes.io/component: smtp2graph
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "odk-central.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: smtp2graph
+  template:
+    metadata:
+      labels:
+        {{- include "odk-central.labels" . | nindent 8 }}
+        app.kubernetes.io/component: smtp2graph
+    spec:
+      containers:
+        - name: smtp2graph
+          image: "{{ .Values.smtp2graph.image.repository }}:{{ .Values.smtp2graph.image.tag }}"
+          imagePullPolicy: {{ .Values.smtp2graph.image.pullPolicy }}
+          ports:
+            - name: smtp
+              containerPort: 587
+              protocol: TCP
+          env:
+            - name: TENANT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "odk-central.smtp2graphSecretName" . }}
+                  key: tenant-id
+            - name: CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "odk-central.smtp2graphSecretName" . }}
+                  key: client-id
+            - name: CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "odk-central.smtp2graphSecretName" . }}
+                  key: client-secret
+            - name: FROM_ADDRESS
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "odk-central.smtp2graphSecretName" . }}
+                  key: from-address
+{{- end }}

@@ -1,0 +1,44 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "odk-central.fullname" . }}-enketo-redis-cache
+  labels:
+    {{- include "odk-central.labels" . | nindent 4 }}
+    app.kubernetes.io/component: enketo-redis-cache
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "odk-central.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: enketo-redis-cache
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        {{- include "odk-central.labels" . | nindent 8 }}
+        app.kubernetes.io/component: enketo-redis-cache
+    spec:
+      containers:
+        - name: redis
+          image: "{{ .Values.redis.image.repository }}:{{ .Values.redis.image.tag }}"
+          imagePullPolicy: {{ .Values.redis.image.pullPolicy }}
+          command:
+            - redis-server
+            - /etc/redis/redis.conf
+          ports:
+            - name: redis
+              containerPort: 6380
+              protocol: TCP
+          volumeMounts:
+            - name: config
+              mountPath: /etc/redis
+            - name: data
+              mountPath: /data
+      volumes:
+        - name: config
+          configMap:
+            name: {{ include "odk-central.fullname" . }}-redis-cache-config
+        - name: data
+          persistentVolumeClaim:
+            claimName: {{ include "odk-central.fullname" . }}-redis-cache
