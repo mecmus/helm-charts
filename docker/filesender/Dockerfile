@@ -1,4 +1,4 @@
-# Multi-stage Dockerfile pour FileSender v3.3 avec Nginx intégré
+# Multi-stage Dockerfile pour FileSender v3.5 avec Nginx intégré
 # Base: php:8.2-fpm-alpine
 
 FROM php:8.2-fpm-alpine AS builder

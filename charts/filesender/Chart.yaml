@@ -1,6 +1,6 @@
 apiVersion: v2
 name: filesender
-description: FileSender v3.3 - Application web open-source de partage de fichiers volumineux avec SimpleSAMLphp et Nginx intégrés
+description: FileSender v3.5 - Application web open-source de partage de fichiers volumineux avec SimpleSAMLphp et Nginx intégrés
 
 type: application
 

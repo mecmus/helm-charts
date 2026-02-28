@@ -193,7 +193,7 @@ postgresql:
     enabled: true
     image:
       repository: postgres
-      tag: "3.5-php"
+      tag: "16-alpine"
       pullPolicy: IfNotPresent
     database: "filesender"
     username: "filesender"
