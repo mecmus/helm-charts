@@ -4,7 +4,7 @@
 
 ### 1. Dockerfile moderne
 - ✅ Image de base: `php:8.2-fpm-alpine`
-- ✅ FileSender 3.3 depuis la branche master3
+- ✅ FileSender 3.5 depuis la branche master3
 - ✅ SimpleSAMLphp 2.2.3 intégré
 - ✅ Nginx 1.25-alpine intégré dans la même image
 - ✅ Extensions PHP: pdo_pgsql, pgsql, mbstring, xml, intl, gd
@@ -189,8 +189,8 @@ docker/filesender/
 1. **Build de l'image Docker**:
    ```bash
    cd docker/filesender
-   docker build -t ghcr.io/mecmus/filesender:3.3 .
-   docker push ghcr.io/mecmus/filesender:3.3
+   docker build -t ghcr.io/mecmus/filesender:3.5 .
+   docker push ghcr.io/mecmus/filesender:3.5
    ```
 
 2. **Test du déploiement**:

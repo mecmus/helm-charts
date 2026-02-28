@@ -1,6 +1,6 @@
 # FileSender Helm Chart
 
-Chart Helm pour déployer FileSender v3.3 sur Kubernetes avec SimpleSAMLphp et Nginx intégrés.
+Chart Helm pour déployer FileSender v3.5 sur Kubernetes avec SimpleSAMLphp et Nginx intégrés.
 
 ## Prérequis
 
