@@ -18,6 +18,15 @@ spec:
             app.kubernetes.io/component: cleanup
         spec:
           restartPolicy: OnFailure
+          {{- if .Values.persistence.enabled }}
+          affinity:
+            podAffinity:
+              requiredDuringSchedulingIgnoredDuringExecution:
+                - labelSelector:
+                    matchLabels:
+                      {{- include "filesender.selectorLabels" . | nindent 22 }}
+                  topologyKey: kubernetes.io/hostname
+          {{- end }}
           containers:
             - name: cleanup
               image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
