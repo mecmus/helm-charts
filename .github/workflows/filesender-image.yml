@@ -99,7 +99,7 @@ jobs:
           sed -i '0,/^  tag: .*/{s/^  tag: .*/  tag: "'"${{ steps.vars.outputs.image_tag }}"'"/}' $VALUES_FILE
           
           # Mise à jour de la description dans Chart.yaml
-          sed -i "s/^description: FileSender v[0-9.]*/description: FileSender v${FS_VERSION}/" $CHART_FILE
+          sed -i "s/^description: FileSender v[0-9]\+\.[0-9]\+/description: FileSender v${FS_VERSION}/" $CHART_FILE
           
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
