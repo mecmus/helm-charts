@@ -1,0 +1,24 @@
+Thank you for installing {{ .Chart.Name }}!
+
+ODK Central is now being deployed. It may take a few minutes for all pods to be ready.
+
+1. Access ODK Central:
+{{- if .Values.ingress.enabled }}
+   https://{{ .Values.domain }}
+{{- else }}
+   Use `kubectl port-forward svc/{{ include "odk-central.fullname" . }}-nginx 8080:80` and open http://localhost:8080
+{{- end }}
+
+2. Create the first admin user:
+
+   a. Find the service pod:
+      kubectl get pods -l app.kubernetes.io/component=service -n {{ .Release.Namespace }}
+
+   b. Create the user:
+      kubectl exec -n {{ .Release.Namespace }} <service-pod> -- odk-cmd --email {{ .Values.sysadminEmail }} user-create
+
+   c. Promote the user to admin:
+      kubectl exec -n {{ .Release.Namespace }} <service-pod> -- odk-cmd --email {{ .Values.sysadminEmail }} user-promote
+
+3. Check pod status:
+   kubectl get pods -n {{ .Release.Namespace }} -l app.kubernetes.io/instance={{ .Release.Name }}

@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "odk-central.fullname" . }}-transfer
+  labels:
+    {{- include "odk-central.labels" . | nindent 4 }}
+  annotations:
+    helm.sh/resource-policy: keep
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: {{ .Values.transfer.storage.size }}
+  {{- if .Values.transfer.storage.storageClassName }}
+  storageClassName: {{ .Values.transfer.storage.storageClassName }}
+  {{- end }}

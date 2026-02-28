@@ -1,0 +1,51 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "odk-central.fullname" . }}-enketo
+  labels:
+    {{- include "odk-central.labels" . | nindent 4 }}
+    app.kubernetes.io/component: enketo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "odk-central.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: enketo
+  template:
+    metadata:
+      labels:
+        {{- include "odk-central.labels" . | nindent 8 }}
+        app.kubernetes.io/component: enketo
+    spec:
+      containers:
+        - name: enketo
+          image: "{{ .Values.enketo.image.repository }}:{{ .Values.enketo.image.tag }}"
+          imagePullPolicy: {{ .Values.enketo.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 8005
+              protocol: TCP
+          env:
+            - name: DOMAIN
+              value: {{ .Values.domain | quote }}
+            - name: HTTPS_PORT
+              value: {{ .Values.httpsPort | quote }}
+            - name: BASE_URL
+              value: "https://{{ .Values.domain }}"
+          volumeMounts:
+            - name: enketo-secrets
+              mountPath: /etc/secrets
+              readOnly: true
+            - name: enketo-config
+              mountPath: /srv/src/enketo/packages/enketo-express/config/config.json.template
+              subPath: config.json.template
+              readOnly: true
+          resources:
+            {{- toYaml .Values.enketo.resources | nindent 12 }}
+      volumes:
+        - name: enketo-secrets
+          secret:
+            secretName: {{ include "odk-central.enketoSecretName" . }}
+        - name: enketo-config
+          configMap:
+            name: {{ include "odk-central.fullname" . }}-enketo-config
