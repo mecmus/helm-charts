@@ -12,6 +12,7 @@ data:
     // Site configuration
     $config['site_url'] = '{{ .Values.filesender.siteUrl }}';
     $config['site_name'] = '{{ .Values.filesender.siteName }}';
+    $config['site_hostname'] = '{{ .Values.filesender.siteHostname | default (urlParse .Values.filesender.siteUrl).host }}';
     $config['admin'] = '{{ .Values.filesender.admin }}';
     $config['admin_email'] = '{{ .Values.filesender.adminEmail }}';
     $config['email_reply_to'] = '{{ .Values.filesender.emailReplyTo }}';
