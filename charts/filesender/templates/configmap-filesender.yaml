@@ -36,6 +36,8 @@ data:
     
     // Storage configuration
     $config['storage_type'] = '{{ .Values.filesender.storage.type }}';
+    // Filesystem path is always needed (CloudS3 uses it as a local staging area)
+    $config['storage_filesystem_path'] = '{{ .Values.filesender.storage.path }}';
     {{- if eq .Values.filesender.storage.type "CloudS3" }}
     // S3 Cloud Storage configuration
     $config['cloud_s3_endpoint'] = '{{ .Values.filesender.storage.s3.endpoint }}';
@@ -52,8 +54,7 @@ data:
     $config['cloud_s3_bulk_delete'] = {{ .Values.filesender.storage.s3.bulkDelete | default false }};
     $config['cloud_s3_bulk_size'] = {{ .Values.filesender.storage.s3.bulkSize | default 1000 }};
     {{- else }}
-    // Filesystem storage configuration
-    $config['storage_filesystem_path'] = '{{ .Values.filesender.storage.path }}';
+    // Filesystem-only storage configuration
     $config['storage_filesystem_shred_path'] = '{{ .Values.filesender.storage.shredPath | default "/opt/filesender/filesender/shredfiles" }}';
     $config['storage_usage_warning'] = {{ .Values.filesender.storage.usageWarning | default 20 }};
     {{- end }}
@@ -65,8 +66,6 @@ data:
     {{- if .Values.filesender.uploadChunkSize }}
     $config['upload_chunk_size'] = {{ .Values.filesender.uploadChunkSize }};
     $config['download_chunk_size'] = $config['upload_chunk_size'];
-    // upload_crypted_chunk_padding_size is set by FileSender defaults; this formula follows the FileSender docs
-    $config['upload_crypted_chunk_size'] = $config['upload_chunk_size'] + $config['upload_crypted_chunk_padding_size'];
     {{- end }}
     
     // Logging configuration

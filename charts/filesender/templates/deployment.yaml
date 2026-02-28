@@ -254,7 +254,7 @@ spec:
             - name: simplesamlphp-metadata
               mountPath: /opt/filesender/simplesaml/metadata/saml20-idp-remote.php
               subPath: saml20-idp-remote.php
-            {{- if and .Values.persistence.enabled (ne .Values.filesender.storage.type "CloudS3") }}
+            {{- if .Values.persistence.enabled }}
             - name: filesender-data
               mountPath: {{ .Values.filesender.storage.path }}
             {{- end }}
@@ -345,7 +345,7 @@ spec:
             items:
               - key: saml20-idp-remote.php
                 path: saml20-idp-remote.php
-        {{- if and .Values.persistence.enabled (ne .Values.filesender.storage.type "CloudS3") }}
+        {{- if .Values.persistence.enabled }}
         - name: filesender-data
           persistentVolumeClaim:
             claimName: {{ include "filesender.fullname" . }}-data

@@ -1,4 +1,4 @@
-{{- if and .Values.persistence.enabled (ne .Values.filesender.storage.type "CloudS3") -}}
+{{- if .Values.persistence.enabled -}}
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:

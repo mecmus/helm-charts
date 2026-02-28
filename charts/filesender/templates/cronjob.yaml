@@ -103,7 +103,7 @@ spec:
                   mountPath: /opt/filesender/filesender/config/config_private.php
                   subPath: config_private.php
                 {{- end }}
-                {{- if and .Values.persistence.enabled (ne .Values.filesender.storage.type "CloudS3") }}
+                {{- if .Values.persistence.enabled }}
                 - name: filesender-data
                   mountPath: {{ .Values.filesender.storage.path }}
                 {{- end }}
@@ -111,7 +111,7 @@ spec:
             - name: filesender-config
               configMap:
                 name: {{ include "filesender.fullname" . }}-filesender
-            {{- if and .Values.persistence.enabled (ne .Values.filesender.storage.type "CloudS3") }}
+            {{- if .Values.persistence.enabled }}
             - name: filesender-data
               persistentVolumeClaim:
                 claimName: {{ include "filesender.fullname" . }}-data
