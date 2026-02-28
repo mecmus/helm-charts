@@ -4,11 +4,13 @@ Collection de charts Helm pour Kubernetes, maintenus par [mecmus](https://github
 
 ## Charts disponibles
 
+<!-- CHART-TABLE-START -->
 | Chart | Version | Description |
 |-------|---------|-------------|
-| [adguard-home](charts/adguard-home/) | 0.1.0 | Chart Helm pour déployer AdGuard Home avec relay DHCP optionnel. |
-| [filesender](charts/filesender/) | 3.5.2 | FileSender v3.5 – Application web open-source de partage de fichiers volumineux avec SimpleSAMLphp et Nginx intégrés. |
-| [plmlatex](charts/plmlatex/) | 0.1.0 | Chart Helm pour déployer PLMLatex (Overleaf Community Edition) avec MongoDB et Redis. |
+| [adguard-home](charts/adguard-home/) | 0.1.0 | A Helm chart for deploying AdGuard Home with optional DHCP relay. |
+| [filesender](charts/filesender/) | 3.5.2 | FileSender v3.5 - Application web open-source de partage de fichiers volumineux avec SimpleSAMLphp et Nginx intégrés |
+| [plmlatex](charts/plmlatex/) | 0.1.0 | A Helm chart for deploying PLMLatex (Overleaf Community Edition) with MongoDB and Redis. |
+<!-- CHART-TABLE-END -->
 
 Consultez le README de chaque chart pour la documentation complète et les options de configuration.
 
