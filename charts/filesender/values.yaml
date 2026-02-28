@@ -16,6 +16,7 @@ fullnameOverride: ""
 # Configuration FileSender
 filesender:
   siteUrl: "https://filesender.example.com"
+  siteHostname: ""  # Extracted from siteUrl if empty
   siteName: "FileSender"
   admin: "testadmin"
   adminEmail: "admin@example.com"

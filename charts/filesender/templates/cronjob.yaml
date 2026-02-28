@@ -34,7 +34,7 @@ spec:
               command:
                 - /bin/sh
                 - -c
-                - php /opt/filesender/filesender/scripts/task/garbagecollector.php
+                - php /opt/filesender/filesender/scripts/task/cron.php
               env:
                 {{- if .Values.postgresql.external.enabled }}
                 {{- if .Values.postgresql.external.existingSecret }}
