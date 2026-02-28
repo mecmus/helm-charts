@@ -71,10 +71,38 @@ spec:
                   value: "true"
                 {{- end }}
                 {{- end }}
+                
+                {{- if eq .Values.filesender.storage.type "CloudS3" }}
+                - name: S3_ACCESS_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      {{- if .Values.filesender.storage.s3.existingSecret }}
+                      name: {{ .Values.filesender.storage.s3.existingSecret }}
+                      key: {{ .Values.filesender.storage.s3.existingSecretKeyAccessKey }}
+                      {{- else }}
+                      name: {{ include "filesender.fullname" . }}
+                      key: s3-access-key
+                      {{- end }}
+                - name: S3_SECRET_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      {{- if .Values.filesender.storage.s3.existingSecret }}
+                      name: {{ .Values.filesender.storage.s3.existingSecret }}
+                      key: {{ .Values.filesender.storage.s3.existingSecretKeySecretKey }}
+                      {{- else }}
+                      name: {{ include "filesender.fullname" . }}
+                      key: s3-secret-key
+                      {{- end }}
+                {{- end }}
               volumeMounts:
                 - name: filesender-config
                   mountPath: /opt/filesender/filesender/config/config.php
                   subPath: config.php
+                {{- if eq .Values.filesender.storage.type "CloudS3" }}
+                - name: filesender-config
+                  mountPath: /opt/filesender/filesender/config/config_private.php
+                  subPath: config_private.php
+                {{- end }}
                 {{- if .Values.persistence.enabled }}
                 - name: filesender-data
                   mountPath: {{ .Values.filesender.storage.path }}
