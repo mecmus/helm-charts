@@ -1,0 +1,15 @@
+apiVersion: v2
+name: uptime-kuma
+description: A Helm chart for deploying Uptime Kuma with automatic admin account initialization.
+type: application
+version: 0.1.0
+appVersion: "2.3.2"
+keywords:
+  - uptime-kuma
+  - monitoring
+  - status-page
+home: https://github.com/mecmus/helm-charts
+sources:
+  - https://github.com/louislam/uptime-kuma
+maintainers:
+  - name: mecmus

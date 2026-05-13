@@ -1,0 +1,8 @@
+Uptime Kuma has been deployed.
+
+Service URL inside the cluster:
+  http://{{ include "uptime-kuma.fullname" . }}:{{ .Values.service.port }}
+
+{{- if .Values.admin.enabled }}
+The admin initialization job is enabled. Configure `admin.username` and `admin.password`, or set `admin.existingSecret`, to control the first admin account.
+{{- end }}
