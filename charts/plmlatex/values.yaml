@@ -43,7 +43,7 @@ mongo:
 redis:
   image:
     repository: redis
-    tag: "5"
+    tag: "8"
     pullPolicy: IfNotPresent
   service:
     port: 6379
