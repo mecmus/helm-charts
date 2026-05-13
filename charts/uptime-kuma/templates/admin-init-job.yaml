@@ -1,0 +1,125 @@
+{{- if .Values.admin.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "uptime-kuma.fullname" . }}-admin-init
+  labels:
+    {{- include "uptime-kuma.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-weight": "5"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+    {{- with .Values.admin.job.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  backoffLimit: {{ .Values.admin.job.backoffLimit }}
+  activeDeadlineSeconds: {{ .Values.admin.job.activeDeadlineSeconds }}
+  ttlSecondsAfterFinished: {{ .Values.admin.job.ttlSecondsAfterFinished }}
+  template:
+    metadata:
+      labels:
+        {{- include "uptime-kuma.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: admin-init
+    spec:
+      restartPolicy: {{ .Values.admin.job.restartPolicy }}
+      securityContext:
+        {{- toYaml .Values.admin.job.podSecurityContext | nindent 8 }}
+      containers:
+        - name: admin-init
+          image: "{{ default .Values.image.repository .Values.admin.job.image.repository }}:{{ default .Values.image.tag .Values.admin.job.image.tag }}"
+          imagePullPolicy: {{ .Values.admin.job.image.pullPolicy }}
+          command:
+            - /bin/sh
+            - -ec
+            - |
+              cd /app
+              max_attempts={{ .Values.admin.job.maxAttempts }}
+              retry_delay={{ .Values.admin.job.retryDelaySeconds }}
+              for attempt in $(seq 1 "$max_attempts"); do
+              if node <<'NODE'
+              const { io } = require("socket.io-client");
+
+              const timeout = 10000;
+              const url = process.env.UPTIME_KUMA_URL;
+              const username = process.env.UPTIME_KUMA_USERNAME;
+              const password = process.env.UPTIME_KUMA_PASSWORD;
+
+              function emit(socket, event, ...args) {
+                return new Promise((resolve, reject) => {
+                  const timer = setTimeout(() => reject(new Error(`${event} timed out`)), timeout);
+                  socket.emit(event, ...args, (response) => {
+                    clearTimeout(timer);
+                    resolve(response);
+                  });
+                });
+              }
+
+              async function main() {
+                const socket = io(url, {
+                  reconnection: false,
+                  timeout,
+                  transports: ["websocket", "polling"],
+                });
+
+                await new Promise((resolve, reject) => {
+                  socket.once("connect", resolve);
+                  socket.once("connect_error", reject);
+                });
+
+                const needSetup = await emit(socket, "needSetup");
+                if (!needSetup) {
+                  console.log("Uptime Kuma is already initialized.");
+                  socket.close();
+                  return;
+                }
+
+                const result = await emit(socket, "setup", username, password);
+                socket.close();
+
+                if (!result || !result.ok) {
+                  const message = result && result.msg ? result.msg : "admin setup failed";
+                  if (message.includes("has been initialized")) {
+                    console.log("Uptime Kuma is already initialized.");
+                    return;
+                  }
+                  throw new Error(message);
+                }
+
+                console.log("Uptime Kuma admin account initialized.");
+              }
+
+              main().catch((error) => {
+                console.error(error.message);
+                process.exit(1);
+              });
+              NODE
+              then
+                exit 0
+              fi
+
+                if [ "$attempt" -lt "$max_attempts" ]; then
+                  sleep "$retry_delay"
+                fi
+              done
+
+              echo "Unable to initialize Uptime Kuma admin account after $max_attempts attempts." >&2
+              exit 1
+          env:
+            - name: UPTIME_KUMA_URL
+              value: "http://{{ include "uptime-kuma.fullname" . }}:{{ .Values.service.port }}"
+            - name: UPTIME_KUMA_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "uptime-kuma.adminSecretName" . }}
+                  key: {{ .Values.admin.existingSecretUsernameKey }}
+            - name: UPTIME_KUMA_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "uptime-kuma.adminSecretName" . }}
+                  key: {{ .Values.admin.existingSecretPasswordKey }}
+          securityContext:
+            {{- toYaml .Values.admin.job.securityContext | nindent 12 }}
+          resources:
+            {{- toYaml .Values.admin.job.resources | nindent 12 }}
+{{- end }}

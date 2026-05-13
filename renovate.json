@@ -13,24 +13,45 @@
   ],
   "packageRules": [
     {
-      "matchPackageNames": ["dhi.io/php"],
+      "matchPackageNames": [
+        "dhi.io/php"
+      ],
       "groupName": "DHI PHP PHP-FPM updates"
     },
     {
-      "matchDatasources": ["github-releases"],
-      "matchPackageNames": ["filesender/filesender"],
+      "matchDatasources": [
+        "github-releases"
+      ],
+      "matchPackageNames": [
+        "filesender/filesender"
+      ],
       "extractVersion": "^v?(?<version>.*)$"
     },
     {
-      "matchDatasources": ["github-releases"],
-      "matchPackageNames": ["simplesamlphp/simplesamlphp"],
+      "matchDatasources": [
+        "github-releases"
+      ],
+      "matchPackageNames": [
+        "simplesamlphp/simplesamlphp"
+      ],
       "extractVersion": "^v(?<version>.*)$"
+    },
+    {
+      "matchDatasources": [
+        "docker"
+      ],
+      "matchPackageNames": [
+        "louislam/uptime-kuma"
+      ],
+      "groupName": "Uptime Kuma image updates"
     }
   ],
   "customManagers": [
     {
       "customType": "regex",
-      "fileMatch": ["(^|/)Dockerfile$"],
+      "fileMatch": [
+        "(^|/)Dockerfile$"
+      ],
       "matchStrings": [
         "FROM dhi.io/php:(?<currentValue>.*?)-fpm"
       ],
@@ -39,7 +60,9 @@
     },
     {
       "customType": "regex",
-      "fileMatch": ["(^|/)Dockerfile$"],
+      "fileMatch": [
+        "(^|/)Dockerfile$"
+      ],
       "matchStrings": [
         "ARG FILESENDER_VERSION=(?<currentValue>.*)"
       ],
@@ -48,12 +71,25 @@
     },
     {
       "customType": "regex",
-      "fileMatch": ["(^|/)Dockerfile$"],
+      "fileMatch": [
+        "(^|/)Dockerfile$"
+      ],
       "matchStrings": [
         "ARG SIMPLESAMLPHP_VERSION=(?<currentValue>.*)"
       ],
       "depNameTemplate": "simplesamlphp/simplesamlphp",
       "datasourceTemplate": "github-releases"
+    },
+    {
+      "customType": "regex",
+      "fileMatch": [
+        "(^|/)charts/uptime-kuma/values\\.yaml$"
+      ],
+      "matchStrings": [
+        "# renovate: datasource=docker depName=louislam/uptime-kuma\\s+tag: \"?(?<currentValue>[^\"\\s]+)\"?"
+      ],
+      "depNameTemplate": "louislam/uptime-kuma",
+      "datasourceTemplate": "docker"
     }
   ]
 }
