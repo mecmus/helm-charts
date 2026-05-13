@@ -16,6 +16,14 @@ The `admin-init` Job runs as a Helm `post-install,post-upgrade` hook. It waits f
 
 For production, prefer `admin.existingSecret` so the password is not stored in Helm values.
 
+When `admin.password` is empty, the chart generates and preserves a random password in the admin secret. Retrieve it with:
+
+```bash
+kubectl get secret <release-fullname>-admin -o jsonpath="{.data.password}" | base64 -d
+```
+
+The Deployment uses a `Recreate` strategy by default to avoid multiple pods mounting the same `ReadWriteOnce` data volume during updates.
+
 ## Values
 
 | Parameter | Description | Default |
@@ -33,6 +41,8 @@ For production, prefer `admin.existingSecret` so the password is not stored in H
 | `admin.existingSecret` | Existing secret containing admin credentials | `""` |
 | `admin.existingSecretUsernameKey` | Username key in the admin secret | `username` |
 | `admin.existingSecretPasswordKey` | Password key in the admin secret | `password` |
+| `admin.job.maxAttempts` | Maximum number of API initialization attempts | `30` |
+| `admin.job.retryDelaySeconds` | Delay between API initialization attempts | `5` |
 
 ## Existing secret example
 

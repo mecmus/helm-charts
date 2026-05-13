@@ -46,6 +46,8 @@ admin:
     backoffLimit: 6
     activeDeadlineSeconds: 300
     ttlSecondsAfterFinished: 300
+    maxAttempts: 30
+    retryDelaySeconds: 5
     restartPolicy: Never
     image:
       repository: ""

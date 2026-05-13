@@ -5,4 +5,8 @@ Service URL inside the cluster:
 
 {{- if .Values.admin.enabled }}
 The admin initialization job is enabled. Configure `admin.username` and `admin.password`, or set `admin.existingSecret`, to control the first admin account.
+{{- if and (not .Values.admin.password) (not .Values.admin.existingSecret) }}
+If the chart generated the admin password, retrieve it with:
+  kubectl get secret {{ include "uptime-kuma.adminSecretName" . }} -o jsonpath="{.data.{{ .Values.admin.existingSecretPasswordKey }}}" | base64 -d
+{{- end }}
 {{- end }}

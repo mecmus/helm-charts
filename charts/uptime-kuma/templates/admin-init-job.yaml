@@ -34,7 +34,8 @@ spec:
             - -ec
             - |
               cd /app
-              max_attempts=30
+              max_attempts={{ .Values.admin.job.maxAttempts }}
+              retry_delay={{ .Values.admin.job.retryDelaySeconds }}
               for attempt in $(seq 1 "$max_attempts"); do
               if node <<'NODE'
               const { io } = require("socket.io-client");
@@ -98,7 +99,7 @@ spec:
               fi
 
                 if [ "$attempt" -lt "$max_attempts" ]; then
-                  sleep 5
+                  sleep "$retry_delay"
                 fi
               done
 
