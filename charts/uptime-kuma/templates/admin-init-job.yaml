@@ -39,11 +39,25 @@ spec:
               for attempt in $(seq 1 "$max_attempts"); do
               if node <<'NODE'
               const { io } = require("socket.io-client");
+              const http = require("http");
+              const https = require("https");
 
               const timeout = 10000;
               const url = process.env.UPTIME_KUMA_URL;
               const username = process.env.UPTIME_KUMA_USERNAME;
               const password = process.env.UPTIME_KUMA_PASSWORD;
+
+              function httpGet(targetUrl) {
+                return new Promise((resolve, reject) => {
+                  const lib = targetUrl.startsWith("https") ? https : http;
+                  const req = lib.get(targetUrl, { timeout }, (res) => {
+                    resolve({ statusCode: res.statusCode, headers: res.headers });
+                    res.resume();
+                  });
+                  req.on("error", reject);
+                  req.on("timeout", () => { req.destroy(); reject(new Error("HTTP request timed out")); });
+                });
+              }
 
               function emit(socket, event, ...args) {
                 return new Promise((resolve, reject) => {
@@ -55,17 +69,57 @@ spec:
                 });
               }
 
-              async function main() {
-                const socket = io(url, {
-                  reconnection: false,
-                  timeout,
-                  transports: ["websocket", "polling"],
-                });
-
-                await new Promise((resolve, reject) => {
-                  socket.once("connect", resolve);
+              function connectSocket() {
+                return new Promise((resolve, reject) => {
+                  const socket = io(url, {
+                    reconnection: false,
+                    timeout,
+                    transports: ["websocket", "polling"],
+                  });
+                  socket.once("connect", () => resolve(socket));
                   socket.once("connect_error", reject);
                 });
+              }
+
+              async function needsDatabaseSetup() {
+                const res = await httpGet(url);
+                const location = res.headers && res.headers.location;
+                return res.statusCode === 302 && location && location.includes("setup-database");
+              }
+
+              async function waitForReady(maxAttempts, delay) {
+                for (let i = 0; i < maxAttempts; i++) {
+                  try {
+                    if (!(await needsDatabaseSetup())) {
+                      return;
+                    }
+                  } catch (e) {
+                    // app may be restarting, keep waiting
+                  }
+                  await new Promise((r) => setTimeout(r, delay));
+                }
+                throw new Error(`Timed out waiting for Uptime Kuma to be ready after database setup (waited ${maxAttempts * delay / 1000}s)`);
+              }
+
+              async function main() {
+                // Step 1: Check if database setup is needed (Uptime Kuma 2.x)
+                if (await needsDatabaseSetup()) {
+                  console.log("Database setup required. Setting up SQLite database...");
+                  const socket = await connectSocket();
+                  const dbResult = await emit(socket, "setup-database", { type: "sqlite" });
+                  socket.close();
+
+                  if (!dbResult || !dbResult.ok) {
+                    const message = dbResult && dbResult.msg ? dbResult.msg : "database setup failed";
+                    throw new Error(`Database setup failed: ${message} (response: ${JSON.stringify(dbResult)})`);
+                  }
+
+                  console.log("Database setup complete. Waiting for Uptime Kuma to restart...");
+                  await waitForReady(30, 2000);
+                }
+
+                // Step 2: Admin account setup
+                const socket = await connectSocket();
 
                 const needSetup = await emit(socket, "needSetup");
                 if (!needSetup) {
