@@ -136,7 +136,7 @@ spec:
               async function setupDatabase() {
                 const res = await makeHttpRequest("POST", getSetupDatabaseUrl(), SQLITE_DB_CONFIG);
                 if (res.statusCode !== 200) {
-                  throw new Error(`Database setup failed with status ${res.statusCode}: ${res.body || "empty response"}`);
+                  throw new Error(`Database setup failed with status ${res.statusCode}`);
                 }
                 return parseJsonResponse(res.body, "/setup-database");
               }
