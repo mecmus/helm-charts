@@ -46,7 +46,7 @@ spec:
               const url = process.env.UPTIME_KUMA_URL;
               const username = process.env.UPTIME_KUMA_USERNAME;
               const password = process.env.UPTIME_KUMA_PASSWORD;
-              const SQLITE_DB_CONFIG = { dbConfig: { type: "sqlite" } };
+              const sqliteDbConfig = { dbConfig: { type: "sqlite" } };
 
               function makeHttpRequest(method, targetUrl, body) {
                 return new Promise((resolve, reject) => {
@@ -134,7 +134,7 @@ spec:
               }
 
               async function setupDatabase() {
-                const res = await makeHttpRequest("POST", getSetupDatabaseUrl(), SQLITE_DB_CONFIG);
+                const res = await makeHttpRequest("POST", getSetupDatabaseUrl(), sqliteDbConfig);
                 if (res.statusCode !== 200) {
                   throw new Error(`Database setup failed with status ${res.statusCode}`);
                 }
