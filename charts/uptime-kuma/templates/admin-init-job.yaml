@@ -110,8 +110,11 @@ spec:
               }
 
               function parseJsonResponse(body, context) {
+                if (!body || body.trim() === "") {
+                  throw new Error(`Empty response body from ${context}`);
+                }
                 try {
-                  return JSON.parse(body || "{}");
+                  return JSON.parse(body);
                 } catch (error) {
                   throw new Error(`Failed to parse ${context} response: ${error.message}`);
                 }
