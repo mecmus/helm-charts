@@ -130,7 +130,7 @@ spec:
 
               async function needsDatabaseSetup() {
                 const info = await getSetupDatabaseInfo();
-                return info.needSetup === true;
+                return Boolean(info.needSetup);
               }
 
               async function setupDatabase() {
