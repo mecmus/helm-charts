@@ -46,16 +46,36 @@ spec:
               const url = process.env.UPTIME_KUMA_URL;
               const username = process.env.UPTIME_KUMA_USERNAME;
               const password = process.env.UPTIME_KUMA_PASSWORD;
+              const sqliteDbConfig = { dbConfig: { type: "sqlite" } };
 
-              function httpGet(targetUrl) {
+              function makeHttpRequest(method, targetUrl, body) {
                 return new Promise((resolve, reject) => {
+                  const payload = body ? JSON.stringify(body) : null;
+                  const options = {
+                    method,
+                    timeout,
+                    headers: payload ? {
+                      "Content-Type": "application/json",
+                      "Content-Length": Buffer.byteLength(payload),
+                    } : {},
+                  };
                   const lib = targetUrl.startsWith("https") ? https : http;
-                  const req = lib.get(targetUrl, { timeout }, (res) => {
-                    resolve({ statusCode: res.statusCode, headers: res.headers });
-                    res.resume();
+                  const req = lib.request(targetUrl, options, (res) => {
+                    let data = "";
+                    res.setEncoding("utf8");
+                    res.on("data", (chunk) => {
+                      data += chunk;
+                    });
+                    res.on("end", () => {
+                      resolve({ statusCode: res.statusCode, headers: res.headers, body: data });
+                    });
                   });
                   req.on("error", reject);
                   req.on("timeout", () => { req.destroy(); reject(new Error("HTTP request timed out")); });
+                  if (payload) {
+                    req.write(payload);
+                  }
+                  req.end();
                 });
               }
 
@@ -81,16 +101,51 @@ spec:
                 });
               }
 
+              function getSetupDatabaseInfoUrl() {
+                return new URL("/setup-database-info", url).toString();
+              }
+
+              function getSetupDatabaseUrl() {
+                return new URL("/setup-database", url).toString();
+              }
+
+              function parseJsonResponse(body, context) {
+                if (!body || body.trim() === "") {
+                  throw new Error(`Empty response body from ${context}`);
+                }
+                try {
+                  return JSON.parse(body);
+                } catch (error) {
+                  throw new Error(`Failed to parse ${context} response: ${error.message}`);
+                }
+              }
+
+              async function getSetupDatabaseInfo() {
+                const res = await makeHttpRequest("GET", getSetupDatabaseInfoUrl());
+                if (res.statusCode !== 200) {
+                  throw new Error(`Unexpected status from /setup-database-info: ${res.statusCode}`);
+                }
+                return parseJsonResponse(res.body, "/setup-database-info");
+              }
+
               async function needsDatabaseSetup() {
-                const res = await httpGet(url);
-                const location = res.headers && res.headers.location;
-                return res.statusCode === 302 && location && location.includes("setup-database");
+                const info = await getSetupDatabaseInfo();
+                return Boolean(info.needSetup);
+              }
+
+              async function setupDatabase() {
+                const res = await makeHttpRequest("POST", getSetupDatabaseUrl(), sqliteDbConfig);
+                if (res.statusCode !== 200) {
+                  throw new Error(`Database setup failed with status ${res.statusCode}`);
+                }
+                return parseJsonResponse(res.body, "/setup-database");
               }
 
               async function waitForReady(maxAttempts, delay) {
                 for (let i = 0; i < maxAttempts; i++) {
                   try {
-                    if (!(await needsDatabaseSetup())) {
+                    const info = await getSetupDatabaseInfo();
+                    if (info.needSetup === false && info.runningSetup === false) {
                       return;
                     }
                   } catch (e) {
@@ -105,9 +160,7 @@ spec:
                 // Step 1: Check if database setup is needed (Uptime Kuma 2.x)
                 if (await needsDatabaseSetup()) {
                   console.log("Database setup required. Setting up SQLite database...");
-                  const socket = await connectSocket();
-                  const dbResult = await emit(socket, "setup-database", { type: "sqlite" });
-                  socket.close();
+                  const dbResult = await setupDatabase();
 
                   if (!dbResult || !dbResult.ok) {
                     const message = dbResult && dbResult.msg ? dbResult.msg : "database setup failed";
