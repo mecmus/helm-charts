@@ -2,7 +2,7 @@ apiVersion: v2
 name: uptime-kuma
 description: A Helm chart for deploying Uptime Kuma with automatic admin account initialization.
 type: application
-version: 0.1.1
+version: 0.1.2
 appVersion: "2.3.2"
 keywords:
   - uptime-kuma
