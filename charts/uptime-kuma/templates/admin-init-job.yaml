@@ -46,8 +46,9 @@ spec:
               const url = process.env.UPTIME_KUMA_URL;
               const username = process.env.UPTIME_KUMA_USERNAME;
               const password = process.env.UPTIME_KUMA_PASSWORD;
+              const SQLITE_DB_CONFIG = { dbConfig: { type: "sqlite" } };
 
-              function httpRequest(method, targetUrl, body) {
+              function makeHttpRequest(method, targetUrl, body) {
                 return new Promise((resolve, reject) => {
                   const payload = body ? JSON.stringify(body) : null;
                   const options = {
@@ -108,12 +109,20 @@ spec:
                 return new URL("/setup-database", url).toString();
               }
 
+              function parseJsonResponse(body, context) {
+                try {
+                  return JSON.parse(body || "{}");
+                } catch (error) {
+                  throw new Error(`Failed to parse ${context} response: ${error.message}`);
+                }
+              }
+
               async function getSetupDatabaseInfo() {
-                const res = await httpRequest("GET", getSetupDatabaseInfoUrl());
+                const res = await makeHttpRequest("GET", getSetupDatabaseInfoUrl());
                 if (res.statusCode !== 200) {
                   throw new Error(`Unexpected status from /setup-database-info: ${res.statusCode}`);
                 }
-                return JSON.parse(res.body || "{}");
+                return parseJsonResponse(res.body, "/setup-database-info");
               }
 
               async function needsDatabaseSetup() {
@@ -122,11 +131,11 @@ spec:
               }
 
               async function setupDatabase() {
-                const res = await httpRequest("POST", getSetupDatabaseUrl(), { dbConfig: { type: "sqlite" } });
+                const res = await makeHttpRequest("POST", getSetupDatabaseUrl(), SQLITE_DB_CONFIG);
                 if (res.statusCode !== 200) {
                   throw new Error(`Database setup failed with status ${res.statusCode}: ${res.body || "empty response"}`);
                 }
-                return JSON.parse(res.body || "{}");
+                return parseJsonResponse(res.body, "/setup-database");
               }
 
               async function waitForReady(maxAttempts, delay) {
