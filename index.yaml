@@ -271,6 +271,26 @@ entries:
   uptime-kuma:
   - apiVersion: v2
     appVersion: 2.3.2
+    created: "2026-05-14T17:58:20.988969382Z"
+    description: A Helm chart for deploying Uptime Kuma with automatic admin account
+      initialization.
+    digest: 0ef3bc9019408aa618a3195a9ac559152c4f6c0018fa060d69848f78c06ef99a
+    home: https://github.com/mecmus/helm-charts
+    keywords:
+    - uptime-kuma
+    - monitoring
+    - status-page
+    maintainers:
+    - name: mecmus
+    name: uptime-kuma
+    sources:
+    - https://github.com/louislam/uptime-kuma
+    type: application
+    urls:
+    - https://github.com/mecmus/helm-charts/releases/download/uptime-kuma-0.1.2/uptime-kuma-0.1.2.tgz
+    version: 0.1.2
+  - apiVersion: v2
+    appVersion: 2.3.2
     created: "2026-05-14T17:31:04.446748609Z"
     description: A Helm chart for deploying Uptime Kuma with automatic admin account
       initialization.
@@ -309,4 +329,4 @@ entries:
     urls:
     - https://github.com/mecmus/helm-charts/releases/download/uptime-kuma-0.1.0/uptime-kuma-0.1.0.tgz
     version: 0.1.0
-generated: "2026-05-14T17:31:04.446785414Z"
+generated: "2026-05-14T17:58:20.989028283Z"
