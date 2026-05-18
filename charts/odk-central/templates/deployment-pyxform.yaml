@@ -1,0 +1,29 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "odk-central.fullname" . }}-pyxform
+  labels:
+    {{- include "odk-central.labels" . | nindent 4 }}
+    app.kubernetes.io/component: pyxform
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "odk-central.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: pyxform
+  template:
+    metadata:
+      labels:
+        {{- include "odk-central.labels" . | nindent 8 }}
+        app.kubernetes.io/component: pyxform
+    spec:
+      containers:
+        - name: pyxform
+          image: "{{ .Values.pyxform.image.repository }}:{{ .Values.pyxform.image.tag }}"
+          imagePullPolicy: {{ .Values.pyxform.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 80
+              protocol: TCP
+          resources:
+            {{- toYaml .Values.pyxform.resources | nindent 12 }}

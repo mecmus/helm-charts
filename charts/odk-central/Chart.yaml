@@ -1,0 +1,15 @@
+apiVersion: v2
+name: odk-central
+description: A Helm chart for deploying ODK Central on Kubernetes
+type: application
+version: 0.1.0
+appVersion: "v2024.3.1"
+keywords:
+  - odk
+  - forms
+  - data-collection
+home: https://getodk.org
+sources:
+  - https://github.com/getodk/central
+maintainers:
+  - name: mecmus
