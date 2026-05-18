@@ -1,0 +1,38 @@
+Overleaf Community Edition has been deployed!
+
+1. Access Overleaf:
+{{- if .Values.ingress.enabled }}
+{{- range .Values.ingress.hosts }}
+   https://{{ .host }}
+{{- end }}
+{{- else }}
+   kubectl port-forward svc/{{ include "overleaf.fullname" . }} 8080:80 -n {{ .Release.Namespace }}
+   Then visit: http://localhost:8080
+{{- end }}
+
+2. Create the first admin account:
+   Visit: {{ .Values.overleaf.siteUrl }}/launchpad
+   Or via CLI:
+   kubectl exec -it deploy/{{ include "overleaf.fullname" . }} -n {{ .Release.Namespace }} -- bash -c \
+     "cd /overleaf/services/web && node modules/server-ce-scripts/scripts/create-user --admin --email={{ .Values.overleaf.adminEmail }}"
+
+{{- if .Values.oauth2Proxy.enabled }}
+
+3. OIDC Authentication (oauth2-proxy):
+   - Make sure oauth2Proxy.oidcIssuerUrl, clientId, and clientSecret are configured.
+   - Redirect URI to register with your OIDC provider:
+     {{ .Values.overleaf.siteUrl }}/oauth2/callback
+{{- end }}
+
+{{- if .Values.mongodb.enabled }}
+
+4. MongoDB is deployed as a subchart.
+{{- else }}
+4. Using external MongoDB: {{ .Values.mongodb.external.url }}
+{{- end }}
+
+{{- if .Values.redis.enabled }}
+5. Redis is deployed as a subchart.
+{{- else }}
+5. Using external Redis: {{ .Values.redis.external.host }}:{{ .Values.redis.external.port }}
+{{- end }}

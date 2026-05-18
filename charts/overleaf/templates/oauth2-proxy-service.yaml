@@ -1,0 +1,18 @@
+{{- if .Values.oauth2Proxy.enabled -}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "overleaf.fullname" . }}-oauth2-proxy
+  labels:
+    {{- include "overleaf.labels" . | nindent 4 }}
+    app.kubernetes.io/component: oauth2-proxy
+spec:
+  type: ClusterIP
+  ports:
+    - port: 80
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "overleaf.oauth2ProxySelectorLabels" . | nindent 4 }}
+{{- end }}
