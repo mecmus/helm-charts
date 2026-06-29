@@ -1,0 +1,16 @@
+apiVersion: v2
+name: ntfy
+description: A Helm chart for deploying ntfy, a lightweight pub-sub notification server.
+type: application
+version: 0.1.0
+appVersion: "2.25.0"
+keywords:
+  - ntfy
+  - notifications
+  - push
+  - pubsub
+home: https://github.com/mecmus/helm-charts
+sources:
+  - https://github.com/binwiederhier/ntfy
+maintainers:
+  - name: mecmus

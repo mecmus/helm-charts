@@ -1,0 +1,4 @@
+ntfy has been deployed.
+
+Service URL inside the cluster:
+  http://{{ include "ntfy.fullname" . }}:{{ .Values.service.port }}
