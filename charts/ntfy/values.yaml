@@ -1,0 +1,54 @@
+replicaCount: 1
+
+image:
+  repository: binwiederhier/ntfy
+  # renovate: datasource=docker depName=binwiederhier/ntfy
+  tag: "2.25.0"
+  pullPolicy: IfNotPresent
+
+nameOverride: ""
+fullnameOverride: ""
+
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 80
+  annotations: {}
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  hosts:
+    - host: ntfy.local
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+
+persistence:
+  enabled: true
+  existingClaim: ""
+  storageClass: ""
+  accessModes:
+    - ReadWriteOnce
+  size: 2Gi
+
+config:
+  base-url: https://ntfy.local
+  listen-http: :80
+  behind-proxy: true
+  cache-file: /var/cache/ntfy/cache.db
+  auth-file: /var/cache/ntfy/auth.db
+  auth-default-access: read-write
+  attachment-cache-dir: /var/cache/ntfy/attachments
+
+resources: {}
+
+podAnnotations: {}
+podSecurityContext: {}
+securityContext: {}
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
