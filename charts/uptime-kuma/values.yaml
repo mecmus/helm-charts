@@ -3,7 +3,7 @@ replicaCount: 1
 image:
   repository: louislam/uptime-kuma
   # renovate: datasource=docker depName=louislam/uptime-kuma
-  tag: "2.3.2"
+  tag: "2.5.4"
   pullPolicy: IfNotPresent
 
 nameOverride: ""
